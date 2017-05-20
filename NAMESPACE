@@ -1,0 +1,3 @@
+useDynLib(SoftBart)
+importFrom(Rcpp, evalCpp)
+exportPattern("^[[:alpha:]]+")
