@@ -62,7 +62,7 @@ struct Node {
   double val;
   double lower;
   double upper;
-  /* double tau; */
+  double tau;
 
   // Leaf parameters
   double mu;
@@ -71,16 +71,19 @@ struct Node {
   double current_weight;
 
   // Functions
-  void Root();
+  void Root(const Hypers& hypers);
   void GetLimits();
   void AddLeaves();
   void BirthLeaves(const Hypers& hypers);
   bool is_left();
   void GenTree(const Hypers& hypers);
   void GenBelow(const Hypers& hypers);
-  void GetW(const arma::mat& X, int i, const Hypers& hypers);
+  void GetW(const arma::mat& X, int i);
   void DeleteLeaves();
   void UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
+  void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
+  void SetTau(double tau_new);
+  double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
 
 };
 
@@ -97,12 +100,13 @@ struct Opts {
   bool update_alpha;
   bool update_beta;
   bool update_gamma;
+  bool update_tau;
 };
 
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
-              bool update_beta, bool update_gamma);
+              bool update_beta, bool update_gamma, bool update_tau);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
@@ -153,8 +157,9 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts);
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y);
-double activation(double x, double c, const Hypers& hypers);
+                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 const Opts& opts);
+double activation(double x, double c, double tau);
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                  const Hypers& hypers);
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,

@@ -11,7 +11,7 @@ Description: Implements the SoftBart model of described by Linero (2017), with
             the BayesTree package. 
             More details about what the package does. See <http://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file> for details on how to write this part.
 License: GPL (>= 2)
-Depends: scales
+Depends: scales, glmnet
 Imports:
     Rcpp (>= 0.12.9)
 LinkingTo: Rcpp, RcppArmadillo

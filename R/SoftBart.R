@@ -25,7 +25,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    alpha_shape_2 = 1) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
-  
+
   out               <- list()
 
   out$alpha         <- alpha
@@ -74,7 +74,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
-                 update_beta = FALSE, update_gamma = FALSE) {
+                 update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -85,6 +85,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_alpha    <- update_alpha
   out$update_beta     <- update_beta
   out$update_gamma    <- update_gamma
+  out$update_tau      <- update_tau
 
   return(out)
 
@@ -130,8 +131,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
   if(is.null(hypers)){
     hypers <- Hypers(X,Y)
-  } 
-  
+  }
+
   ## Normalize Y
   Z <- normalize_bart(Y)
 
@@ -147,7 +148,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
     print("Using default grouping; if this is not desired, preprocess data frame manually using preprocess_df before calling.")
     hypers$group
     hypers$group <- preproc_df$group
-  } 
+  }
 
   X_trans <- quantile_normalize_bart(X_trans)
   X <- X_trans[idx_train,,drop=FALSE]
@@ -175,7 +176,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_s,
                   opts$update_alpha,
                   opts$update_beta,
-                  opts$update_gamma)
+                  opts$update_gamma,
+                  opts$update_tau)
 
 
   a <- min(Y)
@@ -205,14 +207,17 @@ GetSigma <- function(X,Y) {
     X <- model.matrix(~.-1, data = X)
   }
 
-  sigma_hat <- 0
 
-  if(nrow(X) > .5 * ncol(X)) {
-    fit <- lm(Y ~ X)
-    sigma_hat <- summary(fit)$sigma
-  } else {
-    sigma_hat <- sd(Y)
-  }
+  fit <- cv.glmnet(x = X, y = Y)
+  fitted <- predict(fit, X)
+  sigma_hat <- sqrt(mean((fitted - Y)^2))
+  # sigma_hat <- 0
+  # if(nrow(X) > 2 * ncol(X)) {
+  #   fit <- lm(Y ~ X)
+  #   sigma_hat <- summary(fit)$sigma
+  # } else {
+  #   sigma_hat <- sd(Y)
+  # }
 
   return(sigma_hat)
 
