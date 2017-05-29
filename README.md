@@ -12,8 +12,10 @@ This package implements the methodology described in the paper
 
 The package can be installed with the `devtools` package:
 
-    library(devtools)
-    github_install("theodds/SoftBART")
+``` r
+library(devtools)
+github_install("theodds/SoftBART")
+```
 
 ### Usage
 
