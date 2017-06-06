@@ -6,7 +6,9 @@ The SoftBart package
 
 This package implements the methodology described in the paper
 
--   Linero, A.R. and Yang, Y. (2017). *Bayesian tree ensembles that adapt to smoothness and sparsity.* (In preapration)
+-   Linero, A.R. and Yang, Y. (2017). 
+    *Soft Bayesian Additive Regression Trees: Ensembles that Adapt to Smoothness and Sparsity.* 
+    (In preapration)
 
 ### Installation
 
