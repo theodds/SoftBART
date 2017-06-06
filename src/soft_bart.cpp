@@ -8,7 +8,8 @@ using namespace arma;
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
-              bool update_beta, bool update_gamma, bool update_tau) {
+              bool update_beta, bool update_gamma, bool update_tau,
+              bool update_tau_mean) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -21,6 +22,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_beta = update_beta;
   out.update_gamma = update_gamma;
   out.update_tau = update_tau;
+  out.update_tau_mean = update_tau_mean;
 
   return out;
 
@@ -30,7 +32,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2) {
+                  double alpha_shape_2, double tau_rate) {
 
   int GRID_SIZE = 1000;
 
@@ -54,6 +56,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.alpha_scale = alpha_scale;
   out.alpha_shape_1 = alpha_shape_1;
   out.alpha_shape_2 = alpha_shape_2;
+  out.tau_rate = tau_rate;
 
   out.group = group;
 
@@ -444,7 +447,9 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
     if((i+1) % opts.num_print == 0) {
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
-      Rcout << "Finishing warmup " << i + 1 << "\n";
+      Rcout << "Finishing warmup " << i + 1
+            << " tau_rate = " << hypers.tau_rate
+            << "\n";
     }
 
   }
@@ -530,6 +535,7 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
   if(opts.update_sigma_mu) hypers.UpdateSigmaMu(means);
   if(opts.update_beta) hypers.UpdateBeta(forest);
   if(opts.update_gamma) hypers.UpdateGamma(forest);
+  if(opts.update_tau_mean) hypers.UpdateTauRate(forest);
 
   Rcpp::checkUserInterrupt();
 }
@@ -971,18 +977,20 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha, double beta, double gamma, double sigma,
               double shape, double width, int num_tree,
               double sigma_hat, double k, double alpha_scale,
-              double alpha_shape_1, double alpha_shape_2, int num_burn,
+              double alpha_shape_1, double alpha_shape_2, double tau_rate,
+              int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau) {
+              bool update_tau, bool update_tau_mean) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
-                       update_s, update_alpha, update_beta, update_gamma, update_tau);
+                       update_s, update_alpha, update_beta, update_gamma,
+                       update_tau, update_tau_mean);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2);
+                             alpha_shape_2, tau_rate);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
@@ -1026,8 +1034,8 @@ void Node::UpdateTau(const arma::vec& Y,
   double tau_old = tau;
   double tau_new = tau_proposal(tau);
 
-  double loglik_new = loglik_tau(tau_new, X, Y, hypers) + logprior_tau(tau_new);
-  double loglik_old = loglik_tau(tau_old, X, Y, hypers) + logprior_tau(tau_old);
+  double loglik_new = loglik_tau(tau_new, X, Y, hypers) + logprior_tau(tau_new, hypers.tau_rate);
+  double loglik_old = loglik_tau(tau_old, X, Y, hypers) + logprior_tau(tau_old, hypers.tau_rate);
   double new_to_old = log_tau_trans(tau_old);
   double old_to_new = log_tau_trans(tau_new);
 
@@ -1044,9 +1052,9 @@ void Node::UpdateTau(const arma::vec& Y,
 
 
 // Global tau stuff
-double logprior_tau(double tau) {
+double logprior_tau(double tau, double tau_rate) {
   int DO_LOG = 1;
-  return Rf_dexp(tau, 0.1, DO_LOG);
+  return Rf_dexp(tau, 1.0 / tau_rate, DO_LOG);
 }
 
 double tau_proposal(double tau) {
@@ -1078,18 +1086,38 @@ double log_tau_trans(double tau_new) {
   // return 0.0;
 }
 
-void Hypers::update_tau(std::vector<Node*>& forest,
-                           const arma::mat& X, const arma::vec& Y) {
+void Hypers::UpdateTauRate(const std::vector<Node*>& forest) {
 
-  double tau_old = width;
-  double tau_new = tau_proposal(tau_old);
+  vec tau_vec = get_tau_vec(forest);
+  double shape_up = forest.size() + 1.0;
+  double rate_up = sum(tau_vec) + 0.1;
+  double scale_up = 1.0 / rate_up;
 
-  double loglik_new = loglik_tau(tau_new, forest, X, Y) + logprior_tau(tau_new);
-  double new_to_old = log_tau_trans(tau_old);
-  double loglik_old = loglik_tau(tau_old, forest, X, Y) + logprior_tau(tau_old);
-  double old_to_new = log_tau_trans(tau_new);
-
-  bool accept_mh = do_mh(loglik_new, loglik_old, new_to_old, old_to_new);
-  width = accept_mh ? tau_new : tau_old;
+  tau_rate = Rf_rgamma(shape_up, scale_up);
 
 }
+
+arma::vec get_tau_vec(const std::vector<Node*>& forest) {
+  int t = forest.size();
+  vec out = zeros<vec>(t);
+  for(int i = 0; i < t; i++) {
+    out(i) = forest[i]->tau;
+  }
+  return out;
+}
+
+// void Hypers::update_tau(std::vector<Node*>& forest,
+//                            const arma::mat& X, const arma::vec& Y) {
+
+//   double tau_old = width;
+//   double tau_new = tau_proposal(tau_old);
+
+//   double loglik_new = loglik_tau(tau_new, forest, X, Y) + logprior_tau(tau_new);
+//   double new_to_old = log_tau_trans(tau_old);
+//   double loglik_old = loglik_tau(tau_old, forest, X, Y) + logprior_tau(tau_old);
+//   double old_to_new = log_tau_trans(tau_new);
+
+//   bool accept_mh = do_mh(loglik_new, loglik_old, new_to_old, old_to_new);
+//   width = accept_mh ? tau_new : tau_old;
+
+// }

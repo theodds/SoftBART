@@ -16,6 +16,7 @@ struct Hypers {
   double sigma_mu;
   double shape;
   double width;
+  double tau_rate;
   int num_tree;
   int num_groups;
   arma::vec s;
@@ -37,6 +38,7 @@ struct Hypers {
   void UpdateAlpha();
   void UpdateGamma(std::vector<Node*>& forest);
   void UpdateBeta(std::vector<Node*>& forest);
+  void UpdateTauRate(const std::vector<Node*>& forest);
 
   // For updating tau
   double loglik_tau(double tau,
@@ -101,18 +103,20 @@ struct Opts {
   bool update_beta;
   bool update_gamma;
   bool update_tau;
+  bool update_tau_mean;
 };
 
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
-              bool update_beta, bool update_gamma, bool update_tau);
+              bool update_beta, bool update_gamma, bool update_tau,
+              bool update_tau_mean);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2);
+                  double alpha_shape_2, double tau_rate);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,
@@ -190,9 +194,10 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
            double new_to_old, double old_to_new);
-double logprior_tau(double tau);
+double logprior_tau(double tau, double tau_rate);
 double tau_proposal(double tau);
 double log_tau_trans(double tau_new);
+arma::vec get_tau_vec(const std::vector<Node*>& forest);
 
 // Slice sampler
 

@@ -22,36 +22,37 @@
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
-                   alpha_shape_2 = 1) {
+                   alpha_shape_2 = 1, tau_rate = 10) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
 
-  out               <- list()
+  out                                  <- list()
 
-  out$alpha         <- alpha
-  out$beta          <- beta
-  out$gamma         <- gamma
-  out$sigma_mu      <- 0.5 / (k * sqrt(num_tree))
-  out$k             <- k
-  out$num_tree      <- num_tree
-  out$shape         <- shape
-  out$width         <- width
+  out$alpha                            <- alpha
+  out$beta                             <- beta
+  out$gamma                            <- gamma
+  out$sigma_mu                         <- 0.5 / (k * sqrt(num_tree))
+  out$k                                <- k
+  out$num_tree                         <- num_tree
+  out$shape                            <- shape
+  out$width                            <- width
   if(is.null(group)) {
-    out$group         <- 1:ncol(X) - 1
+    out$group                          <- 1:ncol(X) - 1
   } else {
-    out$group         <- group - 1
+    out$group                          <- group - 1
   }
 
-  Y                 <- normalize_bart(Y)
+  Y                                    <- normalize_bart(Y)
   if(is.null(sigma_hat))
-    sigma_hat         <- GetSigma(X,Y)
+    sigma_hat                          <- GetSigma(X,Y)
 
-  out$sigma         <- sigma_hat
-  out$sigma_hat     <- sigma_hat
+  out$sigma                            <- sigma_hat
+  out$sigma_hat                        <- sigma_hat
 
-  out$alpha_scale   <- alpha_scale
-  out$alpha_shape_1 <- alpha_shape_1
-  out$alpha_shape_2 <- alpha_shape_2
+  out$alpha_scale                      <- alpha_scale
+  out$alpha_shape_1                    <- alpha_shape_1
+  out$alpha_shape_2                    <- alpha_shape_2
+  out$tau_rate                         <- tau_rate
 
   return(out)
 
@@ -74,7 +75,8 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
-                 update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE) {
+                 update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
+                 update_tau_mean = TRUE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -86,6 +88,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_beta     <- update_beta
   out$update_gamma    <- update_gamma
   out$update_tau      <- update_tau
+  out$update_tau_mean <- update_tau_mean
 
   return(out)
 
@@ -168,6 +171,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$alpha_scale,
                   hypers$alpha_shape_1,
                   hypers$alpha_shape_2,
+                  hypers$tau_rate,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
@@ -177,7 +181,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_alpha,
                   opts$update_beta,
                   opts$update_gamma,
-                  opts$update_tau)
+                  opts$update_tau,
+                  opts$update_tau_mean)
 
 
   a <- min(Y)

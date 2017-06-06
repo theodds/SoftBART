@@ -84,8 +84,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SoftBart
-List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau);
-RcppExport SEXP SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP) {
+List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean);
+RcppExport SEXP SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -105,6 +105,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type alpha_scale(alpha_scaleSEXP);
     Rcpp::traits::input_parameter< double >::type alpha_shape_1(alpha_shape_1SEXP);
     Rcpp::traits::input_parameter< double >::type alpha_shape_2(alpha_shape_2SEXP);
+    Rcpp::traits::input_parameter< double >::type tau_rate(tau_rateSEXP);
     Rcpp::traits::input_parameter< int >::type num_burn(num_burnSEXP);
     Rcpp::traits::input_parameter< int >::type num_thin(num_thinSEXP);
     Rcpp::traits::input_parameter< int >::type num_save(num_saveSEXP);
@@ -115,7 +116,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type update_beta(update_betaSEXP);
     Rcpp::traits::input_parameter< bool >::type update_gamma(update_gammaSEXP);
     Rcpp::traits::input_parameter< bool >::type update_tau(update_tauSEXP);
-    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau));
+    Rcpp::traits::input_parameter< bool >::type update_tau_mean(update_tau_meanSEXP);
+    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -142,7 +144,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"SoftBart_rcpparma_innerproduct", (DL_FUNC) &SoftBart_rcpparma_innerproduct, 1},
     {"SoftBart_rcpparma_bothproducts", (DL_FUNC) &SoftBart_rcpparma_bothproducts, 1},
     {"SoftBart_rlgam", (DL_FUNC) &SoftBart_rlgam, 1},
-    {"SoftBart_SoftBart", (DL_FUNC) &SoftBart_SoftBart, 26},
+    {"SoftBart_SoftBart", (DL_FUNC) &SoftBart_SoftBart, 28},
     {"SoftBart_do_mh", (DL_FUNC) &SoftBart_do_mh, 4},
     {NULL, NULL, 0}
 };
