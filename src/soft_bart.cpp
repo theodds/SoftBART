@@ -464,6 +464,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   vec gamma = zeros<vec>(opts.num_save);
   mat s = zeros<mat>(opts.num_save, hypers.s.size());
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
+  vec tau_rate = zeros<vec>(opts.num_save);
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
@@ -481,7 +482,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
-
+    tau_rate(i) = hypers.tau_rate;
 
     if((i + 1) % opts.num_print == 0) {
       // Rcout << "Finishing save " << i + 1 << ": tau = " << hypers.width << "\n";
@@ -506,6 +507,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["beta"] = beta;
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
+  out["tau_rate"] = tau_rate;
 
 
   return out;
