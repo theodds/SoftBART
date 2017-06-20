@@ -268,7 +268,7 @@ double slice_sampler(double x0, rho_loglik& g, double w,
 
   // Sample from the interval, shrinking it on each rejection
 
-  double x1;
+  double x1 = 0.0;
 
   do {
 
