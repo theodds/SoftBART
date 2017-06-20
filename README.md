@@ -6,9 +6,7 @@ The SoftBart package
 
 This package implements the methodology described in the paper
 
--   Linero, A.R. and Yang, Y. (2017). 
-    *Soft Bayesian Additive Regression Trees: Ensembles that Adapt to Smoothness and Sparsity.* 
-    (In preapration)
+-   Linero, A.R. and Yang, Y. (2017). *Bayesian tree ensembles that adapt to smoothness and sparsity.* (In preapration)
 
 ### Installation
 
@@ -16,8 +14,13 @@ The package can be installed with the `devtools` package:
 
 ``` r
 library(devtools)
-github_install("theodds/SoftBART")
+install_github("theodds/SoftBART")
 ```
+
+Note that if you are on OSX, you may need to first run the following commands from the terminal:
+
+    curl -O http://r.research.att.com/libs/gfortran-4.8.2-darwin13.tar.bz2
+    sudo tar fvxz gfortran-4.8.2-darwin13.tar.bz2 -C /
 
 ### Usage
 

@@ -1108,18 +1108,32 @@ arma::vec get_tau_vec(const std::vector<Node*>& forest) {
   return out;
 }
 
-// void Hypers::update_tau(std::vector<Node*>& forest,
-//                            const arma::mat& X, const arma::vec& Y) {
 
-//   double tau_old = width;
-//   double tau_new = tau_proposal(tau_old);
+// Reversible jump stuff ----
 
-//   double loglik_new = loglik_tau(tau_new, forest, X, Y) + logprior_tau(tau_new);
-//   double new_to_old = log_tau_trans(tau_old);
-//   double loglik_old = loglik_tau(tau_old, forest, X, Y) + logprior_tau(tau_old);
-//   double old_to_new = log_tau_trans(tau_new);
+std::vector<Node*> TreeSwap(std::vector<Node*>& forest) {
+  int num_tree = forest.size();
+  int idx_1 = sample_class(num_tree);
+  int idx_2 = sample_class(num_tree);
 
-//   bool accept_mh = do_mh(loglik_new, loglik_old, new_to_old, old_to_new);
-//   width = accept_mh ? tau_new : tau_old;
+  std::vector<Node*> new_forest = forest;
 
-// }
+  new_forest[idx_1] = forest[idx_2];
+  new_forest[idx_2] = forest[idx_1];
+
+  return new_forest;
+
+}
+
+std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest) {
+  int num_tree = forest.size();
+  int idx = sample_class(num_tree);
+
+  std::vector<Node*> new_forest = forest;
+  new_forest[num_tree] = forest[idx];
+  new_forest[idx] = forest[num_tree];
+
+  return new_forest;
+
+}
+

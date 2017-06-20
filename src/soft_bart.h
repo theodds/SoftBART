@@ -25,7 +25,7 @@ struct Hypers {
 
   arma::vec rho_propose;
 
-  std::vector<std::vector<unsigned int>> group_to_vars;
+  std::vector<std::vector<unsigned int> > group_to_vars;
 
   double sigma_hat;
   double sigma_mu_hat;
