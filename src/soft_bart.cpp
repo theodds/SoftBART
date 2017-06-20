@@ -449,7 +449,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
       Rcout << "Finishing warmup " << i + 1
             // << " tau_rate = " << hypers.tau_rate
-            // << "\n"
+            << "\n"
         ;
     }
 
