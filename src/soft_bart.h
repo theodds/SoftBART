@@ -17,6 +17,7 @@ struct Hypers {
   double shape;
   double width;
   double tau_rate;
+  double num_tree_prob;
   int num_tree;
   int num_groups;
   arma::vec s;
@@ -87,6 +88,8 @@ struct Node {
   void SetTau(double tau_new);
   double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
 
+  ~Node();
+
 };
 
 
@@ -104,13 +107,14 @@ struct Opts {
   bool update_gamma;
   bool update_tau;
   bool update_tau_mean;
+  bool update_num_tree;
 };
 
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean);
+              bool update_tau_mean, bool update_num_tree);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
@@ -198,6 +202,42 @@ double logprior_tau(double tau, double tau_rate);
 double tau_proposal(double tau);
 double log_tau_trans(double tau_new);
 arma::vec get_tau_vec(const std::vector<Node*>& forest);
+
+// RJMCMC for trees
+std::vector<Node*> TreeSwap(std::vector<Node*>& forest);
+std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest);
+std::vector<Node*> AddTree(std::vector<Node*>& forest,
+                           const Hypers& hypers);
+std::vector<Node*> DeleteTree(std::vector<Node*>& forest);
+void update_num_tree(std::vector<Node*>& forest, Hypers& hypers,
+                     const arma::vec& Y, const arma::vec& res,
+                     const arma::mat& X);
+double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
+             const arma::vec& Y, const arma::mat& X);
+double loglik_normal(const arma::vec& resid, const double& sigma);
+void BirthTree(std::vector<Node*>& forest,
+               Hypers& hypers,
+               const arma::vec& Y,
+               const arma::vec& res,
+               const arma::mat& X);
+void DeathTree(std::vector<Node*>& forest,
+               Hypers& hypers,
+               const arma::vec& Y,
+               const arma::vec& res,
+               const arma::mat& X);
+double TPrior(const std::vector<Node*>& forest, const Hypers& hypers);
+void RenormAddTree(std::vector<Node*>& forest,
+                   std::vector<Node*>& new_forest,
+                   Hypers& hypers);
+void UnnormAddTree(std::vector<Node*>& forest,
+                   std::vector<Node*>& new_forest,
+                   Hypers& hypers);
+void RenormDeleteTree(std::vector<Node*>& forest,
+                      std::vector<Node*>& new_forest,
+                      Hypers& hypers);
+void UnnormDeleteTree(std::vector<Node*>& forest,
+                      std::vector<Node*>& new_forest,
+                      Hypers& hypers);
 
 // Slice sampler
 

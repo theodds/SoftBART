@@ -9,7 +9,7 @@ using namespace arma;
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean) {
+              bool update_tau_mean, bool update_num_tree) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -23,6 +23,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_gamma = update_gamma;
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
+  out.update_num_tree = update_num_tree;
 
   return out;
 
@@ -57,6 +58,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.alpha_shape_1 = alpha_shape_1;
   out.alpha_shape_2 = alpha_shape_2;
   out.tau_rate = tau_rate;
+  out.num_tree_prob = 2.0 / num_tree;
 
   out.group = group;
 
@@ -449,6 +451,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
       Rcout << "Finishing warmup " << i + 1
             // << " tau_rate = " << hypers.tau_rate
+            << " Number of trees = " << hypers.num_tree
             << "\n"
         ;
     }
@@ -521,6 +524,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
   if(opts.update_s) UpdateS(forest, hypers);
   if(opts.update_alpha) hypers.UpdateAlpha();
+  if(opts.update_num_tree) update_num_tree(forest, hypers, Y, Y - Y_hat, X);
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
@@ -984,12 +988,12 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean) {
+              bool update_tau, bool update_tau_mean, bool update_num_tree) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean);
+                       update_tau, update_tau_mean, update_num_tree);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
@@ -1119,10 +1123,10 @@ std::vector<Node*> TreeSwap(std::vector<Node*>& forest) {
 
   std::vector<Node*> new_forest = forest;
 
-  new_forest[idx_1] = forest[idx_2];
-  new_forest[idx_2] = forest[idx_1];
+  forest[idx_1] = new_forest[idx_2];
+  forest[idx_2] = new_forest[idx_1];
 
-  return new_forest;
+  return forest;
 
 }
 
@@ -1130,11 +1134,254 @@ std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest) {
   int num_tree = forest.size();
   int idx = sample_class(num_tree);
 
-  std::vector<Node*> new_forest = forest;
-  new_forest[num_tree] = forest[idx];
-  new_forest[idx] = forest[num_tree];
+  // Rcout << "\nSelected tree = " << idx << "\n";
 
+  Node* tree_1 = forest[idx];
+  Node* tree_2 = forest[num_tree - 1];
+  forest[num_tree-1] = tree_1;
+  forest[idx] = tree_2;
+
+  return forest;
+
+}
+
+std::vector<Node*> AddTree(std::vector<Node*>& forest,
+                           const Hypers& hypers) {
+  std::vector<Node*> new_forest = forest;
+  Node* new_root = new Node;
+  new_root->GenTree(hypers);
+  new_root->SetTau(Rf_rgamma(1.0, 1.0 / hypers.tau_rate));
+
+  std::vector<Node*> leafs = leaves(new_root);
+  for(int i = 0; i < leafs.size(); i++) {
+    leafs[i]->mu = norm_rand() * hypers.sigma_mu;
+  }
+
+  new_forest.push_back(new_root);
   return new_forest;
 
 }
 
+std::vector<Node*> DeleteTree(std::vector<Node*>& forest) {
+
+  std::vector<Node*> new_forest = TreeSwapLast(forest);
+  new_forest.pop_back();
+  return new_forest;
+
+}
+
+void update_num_tree(std::vector<Node*>& forest, Hypers& hypers,
+                     const arma::vec& Y, const arma::vec& res,
+                     const arma::mat& X) {
+
+  double add_or_delete = unif_rand();
+  if(add_or_delete <= 0.5 || hypers.num_tree == 1) {
+    // Rcout << "Birth step!";
+    BirthTree(forest, hypers, Y, res, X);
+  }
+  else {
+    // Rcout << "Death step!";
+    DeathTree(forest, hypers, Y, res, X);
+  }
+
+}
+
+double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
+             const arma::vec& Y, const arma::mat& X) {
+  vec resid = Y - predict(forest, X, hypers);
+  return loglik_normal(resid, hypers.sigma);
+}
+
+double loglik_normal(const arma::vec& resid, const double& sigma) {
+  double N = resid.size();
+  double SSE = dot(resid, resid);
+  return -0.5 * N * log(M_2_PI * pow(sigma, 2)) - 0.5 * SSE / pow(sigma, 2);
+}
+
+void BirthTree(std::vector<Node*>& forest,
+               Hypers& hypers,
+               const arma::vec& Y,
+               const arma::vec& res,
+               const arma::mat& X) {
+
+  // Log likelihood of current state
+  // Rcout << "1";
+  double loglik_old = loglik_normal(res, hypers.sigma);
+
+  // Add tree and modify hypers
+  // Rcout << "2";
+  std::vector<Node*> new_forest = AddTree(forest, hypers);
+  // Rcout << "3";
+  RenormAddTree(forest, new_forest, hypers);
+
+  // Calculate new log likelihood
+  // Rcout << "4";
+  double loglik_new = LogLF(new_forest, hypers, Y, X);
+
+  // Do MH
+  // Rcout << "5";
+  double accept_ratio = loglik_new - loglik_old + TPrior(new_forest, hypers) - TPrior(forest, hypers);
+  if(log(unif_rand()) < accept_ratio) {
+    // Rcout << "6";
+    forest = new_forest;
+  }
+  else {
+    // Rcout << "7";
+    UnnormAddTree(forest, new_forest, hypers);
+    // Rcout << "8";
+    delete new_forest.back();
+  }
+
+}
+
+void DeathTree(std::vector<Node*>& forest,
+               Hypers& hypers,
+               const arma::vec& Y,
+               const arma::vec& res,
+               const arma::mat& X) {
+
+  // Log likelihood of current state
+  double loglik_old = loglik_normal(res, hypers.sigma);
+
+  // Delete tree and modify hypers
+  // Rcout << "Delete tree!";
+  std::vector<Node*> new_forest = DeleteTree(forest);
+  // Rcout << "Renorm!";
+  RenormDeleteTree(forest, new_forest, hypers);
+
+  // Calculate new log likelihood
+  double loglik_new = LogLF(new_forest, hypers, Y, X);
+
+  // Do MH
+  // Rcout << "Do MH!";
+  double accept_ratio = loglik_new - loglik_old + TPrior(new_forest, hypers) - TPrior(forest, hypers);
+  if(log(unif_rand()) < accept_ratio) {
+    // Rcout << "Accept fix!";
+    delete forest.back();
+    // Rcout << "Reass!";
+    forest = new_forest;
+  }
+  else {
+    // Rcout << "Reject fix!";
+    UnnormDeleteTree(forest, new_forest, hypers);
+  }
+
+}
+
+double TPrior(const std::vector<Node*>& forest, const Hypers& hypers) {
+  int num_tree = forest.size();
+  return log(hypers.num_tree_prob) +
+    (num_tree - 1.0) * log(1.0 - hypers.num_tree_prob);
+}
+
+void RenormAddTree(std::vector<Node*>& forest,
+                   std::vector<Node*>& new_forest,
+                   Hypers& hypers) {
+
+  int num_tree = forest.size();
+  // double factor = (double)num_tree / (num_tree + 1.0);
+  // factor = pow(factor, 0.5);
+
+  // Increase number of trees
+  hypers.num_tree = num_tree + 1;
+
+  // Scale sigma_mu
+  // hypers.sigma_mu = hypers.sigma_mu * factor;
+  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+  // // Scale the leaves
+  // for(int i = 0; i < new_forest.size(); i++) {
+  //   std::vector<Node*> leafs = leaves(new_forest[i]);
+  //   for(int j = 0; j < leafs.size(); j++) {
+  //     leafs[j]->mu = factor * leafs[j]->mu;
+  //   }
+  // }
+}
+
+void UnnormAddTree(std::vector<Node*>& forest,
+                   std::vector<Node*>& new_forest,
+                   Hypers& hypers) {
+
+
+  int num_tree = forest.size();
+  // double factor = (double)num_tree / (num_tree + 1.0);
+  // factor = pow(factor, -0.5);
+
+  // Decrease number of trees
+  hypers.num_tree = num_tree;
+
+  // Descale sigma_mu
+  // hypers.sigma_mu = hypers.sigma_mu * factor;
+  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+  // // Descale the leaves
+  // for(int i = 0; i < new_forest.size(); i++) {
+  //   std::vector<Node*> leafs = leaves(new_forest[i]);
+  //   for(int j = 0; j < leafs.size(); j++) {
+  //     leafs[j]->mu = factor * leafs[j]->mu;
+  //   }
+  // }
+
+}
+
+void RenormDeleteTree(std::vector<Node*>& forest,
+                      std::vector<Node*>& new_forest,
+                      Hypers& hypers) {
+
+
+  // Rcout << "1";
+  int num_tree = forest.size();
+  // double factor = (double)num_tree / (num_tree - 1.0);
+  // factor = pow(factor, 0.5);
+
+  // Rcout << "2";
+  // Decrease number of trees
+  hypers.num_tree = num_tree - 1;
+
+  // Rcout << "3";
+  // Descale sigma_mu
+  // hypers.sigma_mu = hypers.sigma_mu * factor;
+  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+  // // Descale the leaves
+  // // Rcout << "4";
+  // for(int i = 0; i < new_forest.size(); i++) {
+  //   std::vector<Node*> leafs = leaves(new_forest[i]);
+  //   // Rcout << i;
+  //   for(int j = 0; j < leafs.size(); j++) {
+  //     leafs[j]->mu = factor * leafs[j]->mu;
+  //   }
+  // }
+
+}
+
+void UnnormDeleteTree(std::vector<Node*>& forest,
+                      std::vector<Node*>& new_forest,
+                      Hypers& hypers) {
+
+  int num_tree = forest.size();
+  // double factor = (double)num_tree / (num_tree - 1.0);
+  // factor = pow(factor, -0.5);
+
+  // Increase the number of trees
+  hypers.num_tree = num_tree;
+
+  // Rescale sigma_mu
+  // hypers.sigma_mu = hypers.sigma_mu * factor;
+  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+  // // Descale the leaves
+  // for(int i = 0; i < new_forest.size(); i++) {
+  //   std::vector<Node*> leafs = leaves(new_forest[i]);
+  //   for(int j = 0; j < leafs.size(); j++) {
+  //     leafs[j]->mu = factor * leafs[j]->mu;
+  //   }
+  // }
+}
+
+Node::~Node() {
+  if(!is_leaf) {
+    delete left;
+    delete right;
+  }
+}

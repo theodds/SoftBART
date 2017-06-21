@@ -71,12 +71,15 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @param update_alpha If true, alpha is updated using a scaled beta prime prior
 #' @param update_beta If true, beta is updated using a Normal(0,2^2) prior
 #' @param update_gamma If true, gamma is updated using a Uniform(0.5, 1) prior
+#' @param update_tau If true, tau is updated for each tree
+#' @param update_tau_mean If true, the mean of tau is updated
+#' @param update_num_tree If true, RJMCMC is done on the number of trees
 #'
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-                 update_tau_mean = TRUE) {
+                 update_tau_mean = TRUE, update_num_tree = TRUE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -89,6 +92,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_gamma    <- update_gamma
   out$update_tau      <- update_tau
   out$update_tau_mean <- update_tau_mean
+  out$update_num_tree <- update_num_tree
 
   return(out)
 
@@ -182,7 +186,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_beta,
                   opts$update_gamma,
                   opts$update_tau,
-                  opts$update_tau_mean)
+                  opts$update_tau_mean,
+                  opts$update_num_tree)
 
 
   a <- min(Y)
