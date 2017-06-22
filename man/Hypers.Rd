@@ -7,7 +7,7 @@
 Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
   sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
   alpha_scale = NULL, alpha_shape_1 = 0.5, alpha_shape_2 = 1,
-  tau_rate = 10)
+  tau_rate = 10, num_tree_prob = NULL)
 }
 \arguments{
 \item{X}{NxP matrix of training data covariates.}
@@ -37,6 +37,8 @@ Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 \item{alpha_shape_1}{Shape parameter for prior on alpha; if not provided, defaults to 0.5}
 
 \item{alpha_shape_2}{Shape parameter for prior on alpha; if not provided, defaults to 1.0}
+
+\item{num_tree_prob}{Parameter for geometric prior on number of tree}
 }
 \value{
 Returns a list containing the function arguments.

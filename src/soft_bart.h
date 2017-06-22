@@ -120,7 +120,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2, double tau_rate);
+                  double alpha_shape_2, double tau_rate, double num_tree_prob);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,

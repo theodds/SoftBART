@@ -33,7 +33,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2, double tau_rate) {
+                  double alpha_shape_2, double tau_rate, double num_tree_prob) {
 
   int GRID_SIZE = 1000;
 
@@ -58,7 +58,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.alpha_shape_1 = alpha_shape_1;
   out.alpha_shape_2 = alpha_shape_2;
   out.tau_rate = tau_rate;
-  out.num_tree_prob = 2.0 / num_tree;
+  out.num_tree_prob = num_tree_prob;
 
   out.group = group;
 
@@ -988,6 +988,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double shape, double width, int num_tree,
               double sigma_hat, double k, double alpha_scale,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
+              double num_tree_prob,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
@@ -1000,7 +1001,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate);
+                             alpha_shape_2, tau_rate, num_tree_prob);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);

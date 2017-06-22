@@ -17,14 +17,16 @@
 #' @param alpha_scale Scale of the prior for alpha; if not provided, defaults to P
 #' @param alpha_shape_1 Shape parameter for prior on alpha; if not provided, defaults to 0.5
 #' @param alpha_shape_2 Shape parameter for prior on alpha; if not provided, defaults to 1.0
+#' @param num_tree_prob Parameter for geometric prior on number of tree
 #'
 #' @return Returns a list containing the function arguments.
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
-                   alpha_shape_2 = 1, tau_rate = 10) {
+                   alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
+  if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
 
   out                                  <- list()
 
@@ -53,6 +55,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
   out$alpha_shape_1                    <- alpha_shape_1
   out$alpha_shape_2                    <- alpha_shape_2
   out$tau_rate                         <- tau_rate
+  out$num_tree_prob                    <- num_tree_prob
 
   return(out)
 
@@ -176,6 +179,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$alpha_shape_1,
                   hypers$alpha_shape_2,
                   hypers$tau_rate,
+                  hypers$num_tree_prob,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
