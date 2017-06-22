@@ -469,6 +469,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   mat s = zeros<mat>(opts.num_save, hypers.s.size());
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
   vec tau_rate = zeros<vec>(opts.num_save);
+  uvec num_tree = zeros<uvec>(opts.num_save);
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
@@ -487,6 +488,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
+    num_tree(i) = hypers.num_tree;
 
     if((i + 1) % opts.num_print == 0) {
       // Rcout << "Finishing save " << i + 1 << ": tau = " << hypers.width << "\n";
@@ -512,6 +514,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
   out["tau_rate"] = tau_rate;
+  out["num_tree"] = num_tree;
 
 
   return out;
@@ -524,7 +527,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
   if(opts.update_s) UpdateS(forest, hypers);
   if(opts.update_alpha) hypers.UpdateAlpha();
-  if(opts.update_num_tree) update_num_tree(forest, hypers, Y, Y - Y_hat, X);
+  if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
@@ -1146,11 +1149,13 @@ std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest) {
 }
 
 std::vector<Node*> AddTree(std::vector<Node*>& forest,
-                           const Hypers& hypers) {
+                           const Hypers& hypers,
+                           const Opts& opts) {
   std::vector<Node*> new_forest = forest;
   Node* new_root = new Node;
   new_root->GenTree(hypers);
-  new_root->SetTau(Rf_rgamma(1.0, 1.0 / hypers.tau_rate));
+  if(opts.update_tau)
+    new_root->SetTau(Rf_rgamma(1.0, 1.0 / hypers.tau_rate));
 
   std::vector<Node*> leafs = leaves(new_root);
   for(int i = 0; i < leafs.size(); i++) {
@@ -1171,13 +1176,14 @@ std::vector<Node*> DeleteTree(std::vector<Node*>& forest) {
 }
 
 void update_num_tree(std::vector<Node*>& forest, Hypers& hypers,
+                     const Opts& opts,
                      const arma::vec& Y, const arma::vec& res,
                      const arma::mat& X) {
 
   double add_or_delete = unif_rand();
   if(add_or_delete <= 0.5 || hypers.num_tree == 1) {
     // Rcout << "Birth step!";
-    BirthTree(forest, hypers, Y, res, X);
+    BirthTree(forest, hypers, opts, Y, res, X);
   }
   else {
     // Rcout << "Death step!";
@@ -1200,6 +1206,7 @@ double loglik_normal(const arma::vec& resid, const double& sigma) {
 
 void BirthTree(std::vector<Node*>& forest,
                Hypers& hypers,
+               const Opts& opts,
                const arma::vec& Y,
                const arma::vec& res,
                const arma::mat& X) {
@@ -1210,7 +1217,7 @@ void BirthTree(std::vector<Node*>& forest,
 
   // Add tree and modify hypers
   // Rcout << "2";
-  std::vector<Node*> new_forest = AddTree(forest, hypers);
+  std::vector<Node*> new_forest = AddTree(forest, hypers, opts);
   // Rcout << "3";
   RenormAddTree(forest, new_forest, hypers);
 

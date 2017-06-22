@@ -207,9 +207,10 @@ arma::vec get_tau_vec(const std::vector<Node*>& forest);
 std::vector<Node*> TreeSwap(std::vector<Node*>& forest);
 std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest);
 std::vector<Node*> AddTree(std::vector<Node*>& forest,
-                           const Hypers& hypers);
+                           const Hypers& hypers, const Opts& opts);
 std::vector<Node*> DeleteTree(std::vector<Node*>& forest);
 void update_num_tree(std::vector<Node*>& forest, Hypers& hypers,
+                     const Opts& opts,
                      const arma::vec& Y, const arma::vec& res,
                      const arma::mat& X);
 double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
@@ -217,6 +218,7 @@ double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
 double loglik_normal(const arma::vec& resid, const double& sigma);
 void BirthTree(std::vector<Node*>& forest,
                Hypers& hypers,
+               const Opts& opts,
                const arma::vec& Y,
                const arma::vec& res,
                const arma::mat& X);

@@ -7,7 +7,7 @@
 Opts(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
   update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
   update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-  update_tau_mean = TRUE)
+  update_tau_mean = TRUE, update_num_tree = TRUE)
 }
 \arguments{
 \item{num_burn}{Number of warmup iterations for the chain.}
@@ -27,6 +27,12 @@ Opts(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
 \item{update_beta}{If true, beta is updated using a Normal(0,2^2) prior}
 
 \item{update_gamma}{If true, gamma is updated using a Uniform(0.5, 1) prior}
+
+\item{update_tau}{If true, tau is updated for each tree}
+
+\item{update_tau_mean}{If true, the mean of tau is updated}
+
+\item{update_num_tree}{If true, RJMCMC is done on the number of trees}
 }
 \value{
 Returns a list containing the function arguments

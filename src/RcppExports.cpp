@@ -136,21 +136,3 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-
-static const R_CallMethodDef CallEntries[] = {
-    {"SoftBart_rmvnorm", (DL_FUNC) &SoftBart_rmvnorm, 2},
-    {"SoftBart_choll", (DL_FUNC) &SoftBart_choll, 1},
-    {"SoftBart_rcpparma_hello_world", (DL_FUNC) &SoftBart_rcpparma_hello_world, 0},
-    {"SoftBart_rcpparma_outerproduct", (DL_FUNC) &SoftBart_rcpparma_outerproduct, 1},
-    {"SoftBart_rcpparma_innerproduct", (DL_FUNC) &SoftBart_rcpparma_innerproduct, 1},
-    {"SoftBart_rcpparma_bothproducts", (DL_FUNC) &SoftBart_rcpparma_bothproducts, 1},
-    {"SoftBart_rlgam", (DL_FUNC) &SoftBart_rlgam, 1},
-    {"SoftBart_SoftBart", (DL_FUNC) &SoftBart_SoftBart, 29},
-    {"SoftBart_do_mh", (DL_FUNC) &SoftBart_do_mh, 4},
-    {NULL, NULL, 0}
-};
-
-RcppExport void R_init_SoftBart(DllInfo *dll) {
-    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
-    R_useDynamicSymbols(dll, FALSE);
-}
