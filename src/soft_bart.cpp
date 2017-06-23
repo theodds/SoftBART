@@ -3,7 +3,7 @@
 using namespace Rcpp;
 using namespace arma;
 
-
+bool RESCALE = true;
 
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
@@ -1287,23 +1287,25 @@ void RenormAddTree(std::vector<Node*>& forest,
                    Hypers& hypers) {
 
   int num_tree = forest.size();
-  // double factor = (double)num_tree / (num_tree + 1.0);
-  // factor = pow(factor, 0.5);
+  double factor = (double)num_tree / (num_tree + 1.0);
+  factor = pow(factor, 0.5);
 
   // Increase number of trees
   hypers.num_tree = num_tree + 1;
 
   // Scale sigma_mu
-  // hypers.sigma_mu = hypers.sigma_mu * factor;
-  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+  if(RESCALE) {
+    hypers.sigma_mu = hypers.sigma_mu * factor;
+    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
 
-  // // Scale the leaves
-  // for(int i = 0; i < new_forest.size(); i++) {
-  //   std::vector<Node*> leafs = leaves(new_forest[i]);
-  //   for(int j = 0; j < leafs.size(); j++) {
-  //     leafs[j]->mu = factor * leafs[j]->mu;
-  //   }
-  // }
+    // Scale the leaves
+    for(int i = 0; i < new_forest.size(); i++) {
+      std::vector<Node*> leafs = leaves(new_forest[i]);
+      for(int j = 0; j < leafs.size(); j++) {
+        leafs[j]->mu = factor * leafs[j]->mu;
+      }
+    }
+  }
 }
 
 void UnnormAddTree(std::vector<Node*>& forest,
@@ -1312,24 +1314,26 @@ void UnnormAddTree(std::vector<Node*>& forest,
 
 
   int num_tree = forest.size();
-  // double factor = (double)num_tree / (num_tree + 1.0);
-  // factor = pow(factor, -0.5);
+  double factor = (double)num_tree / (num_tree + 1.0);
+  factor = pow(factor, -0.5);
 
   // Decrease number of trees
   hypers.num_tree = num_tree;
 
   // Descale sigma_mu
-  // hypers.sigma_mu = hypers.sigma_mu * factor;
-  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+  if(RESCALE) {
 
-  // // Descale the leaves
-  // for(int i = 0; i < new_forest.size(); i++) {
-  //   std::vector<Node*> leafs = leaves(new_forest[i]);
-  //   for(int j = 0; j < leafs.size(); j++) {
-  //     leafs[j]->mu = factor * leafs[j]->mu;
-  //   }
-  // }
+    hypers.sigma_mu = hypers.sigma_mu * factor;
+    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
 
+    // Descale the leaves
+    for(int i = 0; i < new_forest.size(); i++) {
+      std::vector<Node*> leafs = leaves(new_forest[i]);
+      for(int j = 0; j < leafs.size(); j++) {
+        leafs[j]->mu = factor * leafs[j]->mu;
+      }
+    }
+  }
 }
 
 void RenormDeleteTree(std::vector<Node*>& forest,
@@ -1339,8 +1343,8 @@ void RenormDeleteTree(std::vector<Node*>& forest,
 
   // Rcout << "1";
   int num_tree = forest.size();
-  // double factor = (double)num_tree / (num_tree - 1.0);
-  // factor = pow(factor, 0.5);
+  double factor = (double)num_tree / (num_tree - 1.0);
+  factor = pow(factor, 0.5);
 
   // Rcout << "2";
   // Decrease number of trees
@@ -1348,18 +1352,21 @@ void RenormDeleteTree(std::vector<Node*>& forest,
 
   // Rcout << "3";
   // Descale sigma_mu
-  // hypers.sigma_mu = hypers.sigma_mu * factor;
-  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+  if(RESCALE) {
 
-  // // Descale the leaves
-  // // Rcout << "4";
-  // for(int i = 0; i < new_forest.size(); i++) {
-  //   std::vector<Node*> leafs = leaves(new_forest[i]);
-  //   // Rcout << i;
-  //   for(int j = 0; j < leafs.size(); j++) {
-  //     leafs[j]->mu = factor * leafs[j]->mu;
-  //   }
-  // }
+    hypers.sigma_mu = hypers.sigma_mu * factor;
+    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+    // Descale the leaves
+    // Rcout << "4";
+    for(int i = 0; i < new_forest.size(); i++) {
+      std::vector<Node*> leafs = leaves(new_forest[i]);
+      // Rcout << i;
+      for(int j = 0; j < leafs.size(); j++) {
+        leafs[j]->mu = factor * leafs[j]->mu;
+      }
+    }
+  }
 
 }
 
@@ -1368,23 +1375,26 @@ void UnnormDeleteTree(std::vector<Node*>& forest,
                       Hypers& hypers) {
 
   int num_tree = forest.size();
-  // double factor = (double)num_tree / (num_tree - 1.0);
-  // factor = pow(factor, -0.5);
+  double factor = (double)num_tree / (num_tree - 1.0);
+  factor = pow(factor, -0.5);
 
   // Increase the number of trees
   hypers.num_tree = num_tree;
 
   // Rescale sigma_mu
-  // hypers.sigma_mu = hypers.sigma_mu * factor;
-  // hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+  if(RESCALE) {
 
-  // // Descale the leaves
-  // for(int i = 0; i < new_forest.size(); i++) {
-  //   std::vector<Node*> leafs = leaves(new_forest[i]);
-  //   for(int j = 0; j < leafs.size(); j++) {
-  //     leafs[j]->mu = factor * leafs[j]->mu;
-  //   }
-  // }
+    hypers.sigma_mu = hypers.sigma_mu * factor;
+    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
+
+    // Descale the leaves
+    for(int i = 0; i < new_forest.size(); i++) {
+      std::vector<Node*> leafs = leaves(new_forest[i]);
+      for(int j = 0; j < leafs.size(); j++) {
+        leafs[j]->mu = factor * leafs[j]->mu;
+      }
+    }
+  }
 }
 
 Node::~Node() {
