@@ -23,7 +23,8 @@
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
-                   alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL) {
+                   alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
+                   temperature = 1.0) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
@@ -56,6 +57,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
   out$alpha_shape_2                    <- alpha_shape_2
   out$tau_rate                         <- tau_rate
   out$num_tree_prob                    <- num_tree_prob
+  out$temperature                      <- temperature
 
   return(out)
 
@@ -180,6 +182,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$alpha_shape_2,
                   hypers$tau_rate,
                   hypers$num_tree_prob,
+                  hypers$temperature,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
@@ -211,6 +214,37 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
   return(fit)
 
+}
+
+TreeSelect <- function(X,Y, X_test, hypers = NULL, tree_start = 25, opts = Opts()) {
+
+  if(is.null(hypers)){
+    hypers <- Hypers(X,Y)
+  }
+
+  best <- 0;
+
+  hypers$num_tree <- tree_start
+  fit <- softbart(X,Y,X_test,hypers, opts)
+  best <- mean(fit$loglik) + hypers$num_tree * log(1 - hypers$num_tree_prob)
+
+  while(TRUE) {
+    tree_old <- hypers$num_tree
+    tree_new <- 2 * tree_old
+    hypers$num_tree <- tree_new
+    fit <- softbart(X,Y,X,hypers, opts)
+    gof <- mean(fit$loglik) + hypers$num_tree * log(1 - hypers$num_tree_prob)
+    if(gof < best) {
+      break
+    }
+    best <- gof
+  }
+
+  hypers$num_tree <- tree_old
+  hypers$temperature <- 1.0
+  fit <- softbart(X,Y,X_test,hypers, opts)
+
+  return(list(num_tree = tree_old, fit = fit))
 }
 
 GetSigma <- function(X,Y) {

@@ -18,6 +18,7 @@ struct Hypers {
   double width;
   double tau_rate;
   double num_tree_prob;
+  double temperature;
   int num_tree;
   int num_groups;
   arma::vec s;
@@ -120,7 +121,8 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2, double tau_rate, double num_tree_prob);
+                  double alpha_shape_2, double tau_rate, double num_tree_prob,
+                  double temperature);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,
@@ -131,8 +133,9 @@ double LogLT(Node* n, const arma::vec& Y,
 
 double cauchy_jacobian(double tau, double sigma_hat);
 
-double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old);
-
+double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
+                    double temperature = 1.0);
+arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers);
 arma::vec predict(const std::vector<Node*>& forest,
                   const arma::mat& X,
                   const Hypers& hypers);

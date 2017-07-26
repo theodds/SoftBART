@@ -33,7 +33,8 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double alpha, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2, double tau_rate, double num_tree_prob) {
+                  double alpha_shape_2, double tau_rate, double num_tree_prob,
+                  double temperature) {
 
   int GRID_SIZE = 1000;
 
@@ -59,6 +60,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.alpha_shape_2 = alpha_shape_2;
   out.tau_rate = tau_rate;
   out.num_tree_prob = num_tree_prob;
+  out.temperature = temperature;
 
   out.group = group;
 
@@ -221,8 +223,8 @@ void GetSuffStats(Node* n, const arma::vec& y,
     Lambda = Lambda + w_i * trans(w_i);
   }
 
-  Lambda = Lambda / pow(hypers.sigma, 2);
-  mu_hat = mu_hat / pow(hypers.sigma, 2);
+  Lambda = Lambda / pow(hypers.sigma, 2) * hypers.temperature;
+  mu_hat = mu_hat / pow(hypers.sigma, 2) * hypers.temperature;
   Omega_inv_out = Lambda + eye(num_leaves, num_leaves) / pow(hypers.sigma_mu, 2);
   mu_hat_out = solve(Omega_inv_out, mu_hat);
 
@@ -243,12 +245,12 @@ double LogLT(Node* n, const arma::vec& Y,
   int N = Y.size();
 
   // Rcout << "Compute ";
-  double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2));
+  double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
   out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
   double val, sign;
   log_det(val, sign, Omega_inv / M_2_PI);
   out -= 0.5 * val;
-  out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2);
+  out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
   out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
 
   // Rcout << "Done";
@@ -267,10 +269,11 @@ double cauchy_jacobian(double tau, double sigma_hat) {
 
 }
 
-double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old) {
+double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
+                    double temperature) {
 
-  double SSE = dot(r,r);
-  int n = r.size();
+  double SSE = dot(r,r) * temperature;
+  double n = r.size() * temperature;
 
   double shape = 0.5 * n + 1.0;
   double scale = 2.0 / SSE;
@@ -287,7 +290,7 @@ double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old) {
 }
 
 void Hypers::UpdateSigma(const arma::vec& r) {
-  sigma = update_sigma(r, sigma_hat, sigma);
+  sigma = update_sigma(r, sigma_hat, sigma, temperature);
 }
 
 void Hypers::UpdateSigmaMu(const arma::vec& means) {
@@ -470,6 +473,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
   vec tau_rate = zeros<vec>(opts.num_save);
   uvec num_tree = zeros<uvec>(opts.num_save);
+  vec loglik = zeros<vec>(opts.num_save);
+  mat loglik_train = zeros<mat>(opts.num_save, Y_hat.size());
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
@@ -488,6 +493,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
+    loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
+    loglik(i) = sum(loglik_train.row(i));
     num_tree(i) = hypers.num_tree;
 
     if((i + 1) % opts.num_print == 0) {
@@ -515,6 +522,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["var_counts"] = var_counts;
   out["tau_rate"] = tau_rate;
   out["num_tree"] = num_tree;
+  out["loglik"] = loglik;
+  out["loglik_train"] = loglik_train;
 
 
   return out;
@@ -981,6 +990,22 @@ Node* rand(std::vector<Node*> ngb) {
   return ngb[i];
 }
 
+// double loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
+//   vec res = Y - Y_hat;
+//   double out = -0.5 * Y.size() * log(M_2_PI * pow(hypers.sigma,2.0)) -
+//     dot(res, res) * 0.5 / pow(hypers.sigma,2.0);
+//   return out;
+// }
+
+arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
+  vec res = Y - Y_hat;
+  vec out = zeros<vec>(Y.size());
+  for(int i = 0; i < Y.size(); i++) {
+    out(i) = -0.5 * log(M_2_PI * pow(hypers.sigma,2)) - 0.5 * pow(res(i) / hypers.sigma, 2);
+  }
+  return out;
+}
+
 // [[Rcpp::export]]
 List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               const arma::uvec& group,
@@ -989,6 +1014,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double sigma_hat, double k, double alpha_scale,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
+              double temperature,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
@@ -1001,7 +1027,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob);
+                             alpha_shape_2, tau_rate, num_tree_prob, temperature);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
