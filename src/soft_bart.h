@@ -51,6 +51,9 @@ struct Hypers {
 
   int SampleVar() const;
 
+  Hypers(Rcpp::List hypers);
+  Hypers();
+
 };
 
 struct Node {
@@ -89,6 +92,7 @@ struct Node {
   void SetTau(double tau_new);
   double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
 
+  Node();
   ~Node();
 
 };
@@ -109,6 +113,37 @@ struct Opts {
   bool update_tau;
   bool update_tau_mean;
   bool update_num_tree;
+
+Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
+    update_beta(false), update_gamma(false), update_tau(true),
+    update_tau_mean(false), update_num_tree(false) {
+
+  num_burn = 1;
+  num_thin = 1;
+  num_save = 1;
+  num_print = 100;
+  
+}
+
+};
+
+class Forest {
+
+ private:
+
+  std::vector<Node*> trees;
+  Hypers hypers;
+  Opts opts;
+
+ public:
+
+  Forest(Rcpp::List hypers_);
+  ~Forest();
+  // arma::vec predict(const arma::mat& X);
+  arma::mat do_gibbs(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, int num_iter, bool update_s);
+  arma::vec get_s() {return hypers.s;}
+
+
 };
 
 

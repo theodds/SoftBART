@@ -5,6 +5,36 @@ using namespace arma;
 
 bool RESCALE = true;
 
+Forest::Forest(Rcpp::List hypers_) : hypers(hypers_), opts() {
+  trees.resize(hypers.num_tree);
+  for(int i = 0; i < hypers.num_tree; i++) {
+    trees[i] = new Node();
+    trees[i]->Root(hypers);
+    // trees[i]->GenTree(hypers);
+  }
+}
+
+Forest::~Forest() {
+  for(int i = 0; i < trees.size(); i++) {
+    delete trees[i];
+  }
+}
+
+Node::Node() {
+  is_leaf = true;
+  is_root = true;
+  left = NULL;
+  right = NULL;
+  parent = NULL;
+
+  var = 0;
+  val = 0.0;
+  lower = 0.0;
+  upper = 1.0;
+  tau = 1.0;
+  mu = 0.0;
+  current_weight = 0.0;
+}
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
@@ -1087,6 +1117,59 @@ void Node::UpdateTau(const arma::vec& Y,
 
 }
 
+Hypers::Hypers() {
+  alpha = 1.0;
+  beta = 2.0;
+  gamma = 0.95;
+}
+
+Hypers::Hypers(Rcpp::List hypers) {
+  alpha = hypers["alpha"];
+  beta = hypers["beta"];
+  gamma = hypers["gamma"];
+  sigma = hypers["sigma"];
+  sigma_mu = hypers["sigma_mu"];
+  sigma_mu_hat = sigma_mu;
+  shape = hypers["shape"];
+  width = hypers["width"];
+  num_tree = hypers["num_tree"];
+  sigma_hat = hypers["sigma_hat"];
+  alpha_scale = hypers["alpha_scale"];
+  alpha_shape_1 = hypers["alpha_shape_1"];
+  alpha_shape_2 = hypers["alpha_shape_2"];
+  tau_rate = hypers["tau_rate"];
+  num_tree_prob = hypers["num_tree_prob"];
+  temperature = hypers["temperature"];
+
+  // Deal with group and num_group
+  group = as<arma::uvec>(hypers["group"]);
+  num_groups = group.max() + 1;
+
+
+  // Deal with other stuff
+
+  s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
+  logs = log(s);
+
+  group_to_vars.resize(s.size());
+  for(int i = 0; i < s.size(); i++) {
+   group_to_vars[i].resize(0);
+  }
+  int P = group.size();
+  for(int p = 0; p < P; p++) {
+   int idx = group(p);
+   group_to_vars[idx].push_back(p);
+  }
+
+  int GRID_SIZE = 1000;
+
+  rho_propose = arma::zeros<arma::vec>(GRID_SIZE - 1);
+  for(int i = 0; i < GRID_SIZE - 1; i++) {
+    rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
+  }
+
+}
+
 
 // Global tau stuff
 double logprior_tau(double tau, double tau_rate) {
@@ -1428,4 +1511,35 @@ Node::~Node() {
     delete left;
     delete right;
   }
+}
+
+arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
+                           const arma::mat& X_test, int num_iter, bool update_s) {
+
+  vec Y_hat = predict(trees, X, hypers);
+  mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+
+  for(int i = 0; i < num_iter; i++) {
+    if(update_s) {
+      IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+    }
+    else {
+      IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+    }
+    vec tmp = predict(trees, X_test, hypers);
+    Y_out.row(i) = tmp.t();
+  }
+
+  return Y_out;
+
+}
+
+RCPP_MODULE(mod_forest) {
+
+  class_<Forest>("Forest")
+
+    .constructor<Rcpp::List>()
+    .method("do_gibbs", &Forest::do_gibbs)
+    .method("get_s", &Forest::get_s);
+
 }

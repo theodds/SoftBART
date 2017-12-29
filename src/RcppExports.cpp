@@ -139,6 +139,8 @@ BEGIN_RCPP
 END_RCPP
 }
 
+RcppExport SEXP _rcpp_module_boot_mod_forest();
+
 static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rmvnorm", (DL_FUNC) &_SoftBart_rmvnorm, 2},
     {"_SoftBart_choll", (DL_FUNC) &_SoftBart_choll, 1},
@@ -149,6 +151,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
     {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 31},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},
+    {"_rcpp_module_boot_mod_forest", (DL_FUNC) &_rcpp_module_boot_mod_forest, 0},
     {NULL, NULL, 0}
 };
 
