@@ -270,3 +270,8 @@ GetSigma <- function(X,Y) {
   return(sigma_hat)
 
 }
+
+MakeForest <- function(hypers, opts) {
+  mf <- Module(module = "mod_forest", PACKAGE = "SoftBart")
+  return(new(mf$Forest, hypers, opts))
+}

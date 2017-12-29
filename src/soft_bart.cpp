@@ -5,13 +5,14 @@ using namespace arma;
 
 bool RESCALE = true;
 
-Forest::Forest(Rcpp::List hypers_) : hypers(hypers_), opts() {
+Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opts_) {
   trees.resize(hypers.num_tree);
   for(int i = 0; i < hypers.num_tree; i++) {
     trees[i] = new Node();
     trees[i]->Root(hypers);
     // trees[i]->GenTree(hypers);
   }
+  num_gibbs = 0;
 }
 
 Forest::~Forest() {
@@ -1514,13 +1515,15 @@ Node::~Node() {
 }
 
 arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
-                           const arma::mat& X_test, int num_iter, bool update_s) {
+                           const arma::mat& X_test, int num_iter) {
 
   vec Y_hat = predict(trees, X, hypers);
   mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
 
+  int num_warmup = floor(opts.num_burn / 2.0);
+
   for(int i = 0; i < num_iter; i++) {
-    if(update_s) {
+    if(opts.update_s && (num_gibbs > num_warmup)) {
       IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
     }
     else {
@@ -1528,6 +1531,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     }
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
+    num_gibbs++;
   }
 
   return Y_out;
@@ -1538,8 +1542,10 @@ RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
 
-    .constructor<Rcpp::List>()
+    // .constructor<Rcpp::List>()
+    .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
-    .method("get_s", &Forest::get_s);
+    .method("get_s", &Forest::get_s)
+    .field("num_gibbs", &Forest::num_gibbs);
 
 }

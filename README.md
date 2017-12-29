@@ -33,7 +33,7 @@ The following is a minimal example on "Friedman's example":
 library(SoftBart)
 
 ## Functions used to generate fake data
-set.seed(123)
+set.seed(1234)
 f_fried <- function(x) 10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 
                       10 * x[,4] + 5 * x[,5]
     
@@ -49,11 +49,12 @@ gen_data <- function(n_train, n_test, P, sigma) {
 }
 
 ## Simiulate dataset
-sim_data <- gen_data(250, 1000, 50, 1)
+sim_data <- gen_data(250, 100, 50, 1)
     
 ## Fit the model
 fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test, 
-                opts = Opts(num_burn = 5000, num_save = 5000))
+                hypers = Hypers(sim_data$X, sim_data$Y, num_tree = 50, temperature = 1),
+                opts = Opts(num_burn = 5000, num_save = 5000, update_num_tree = FALSE, update_tau = TRUE))
     
 ## Plot the fit (note: interval estimates are not prediction intervals, 
 ## so they do not cover the predictions at the nominal rate)
@@ -65,4 +66,24 @@ posterior_probs <- function(fit) colMeans(fit$var_counts > 0)
 plot(posterior_probs(fit), 
      col = ifelse(posterior_probs(fit) > 0.5, muted("blue"), muted("green")), 
      pch = 20)
+
+rmse <- function(x,y) sqrt(mean((x-y)^2))
+
+rmse(fit$y_hat_test_mean, sim_data$mu_test)
+rmse(fit$y_hat_train_mean, sim_data$mu)
 ```
+
+### Accessing the model from R
+
+In more complex settings, one may wish to incorporate the SoftBART model as a component within a larger model. In this case, it is possible to construct a SoftBART object within `R` and do a single Gibbs sampling update.
+
+``` r
+hypers <- Hypers(sim_data$X, sim_data$Y)
+opts <- Opts()
+
+forest <- MakeForest(hypers, opts)
+mu_hat <- forest$do_gibbs(sim_data$X, sim_data$Y, sim_data$X_test, opts$num_burn)
+mu_hat <- forest$do_gibbs(sim_data$X, sim_data$Y, sim_data$X_test, opts$num_save)
+```
+
+The `do_gibbs` function takes as input the data used to do the update, an additional set of points at which to predict, and the number of iterations to run the sampler. By default, the probability vector `s` will not be updated until at least `num_burn / 2` iterations have been run. The code above first burns in and then samples from the posterior, and is essentially equivalent to using `softbart`. **WARNING**: if you are going to do this, you need to preprocess `X` and `X_test` by hand, so that all values lie in \[0,1\]. The `softbart` function, in addition to doing the sampling, also preprocesses `X` and `X_test` by applying a quantile transformation.

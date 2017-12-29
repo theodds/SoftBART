@@ -122,7 +122,24 @@ Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
   num_thin = 1;
   num_save = 1;
   num_print = 100;
-  
+
+}
+
+Opts(Rcpp::List opts_) {
+
+  update_sigma_mu = opts_["update_sigma_mu"];
+  update_s = opts_["update_s"];
+  update_alpha = opts_["update_alpha"];
+  update_beta = opts_["update_beta"];
+  update_gamma = opts_["update_beta"];
+  update_tau = opts_["update_tau"];
+  update_tau_mean = opts_["update_tau_mean"];
+  update_num_tree = opts_["update_num_tree"];
+  num_burn = opts_["num_burn"];
+  num_thin = opts_["num_thin"];
+  num_save = opts_["num_save"];
+  num_print = opts_["num_print"];
+
 }
 
 };
@@ -137,11 +154,13 @@ class Forest {
 
  public:
 
-  Forest(Rcpp::List hypers_);
+  /* Forest(Rcpp::List hypers_); */
+  Forest(Rcpp::List hypers_, Rcpp::List opts_);
   ~Forest();
   // arma::vec predict(const arma::mat& X);
-  arma::mat do_gibbs(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, int num_iter, bool update_s);
+  arma::mat do_gibbs(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, int num_iter);
   arma::vec get_s() {return hypers.s;}
+  int num_gibbs;
 
 
 };
