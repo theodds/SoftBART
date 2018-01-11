@@ -1532,6 +1532,10 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
     num_gibbs++;
+    if(num_gibbs % opts.num_print == 0) {
+      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " << 
+        hypers.num_tree << std::endl;
+    }
   }
 
   return Y_out;
