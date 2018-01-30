@@ -35,6 +35,7 @@ Node::Node() {
   tau = 1.0;
   mu = 0.0;
   current_weight = 0.0;
+  loglik_tree = 0.0;
 }
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
@@ -158,6 +159,7 @@ void Node::AddLeaves() {
   left->upper = 1.0;
   left->mu = 0.0;
   left->current_weight = 0.0;
+  left->loglik = 0.0
   left->tau = tau;
   right->is_leaf = true;
   right->parent = this;
@@ -170,6 +172,7 @@ void Node::AddLeaves() {
   right->upper = 1.0;
   right->mu = 0.0;
   right->current_weight = 0.0;
+  right->loglik = 0.0
   right->tau = tau;
 
 }
@@ -284,7 +287,7 @@ double LogLT(Node* n, const arma::vec& Y,
   out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
   out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
 
-  // Rcout << "Done";
+  n->loglik = out;
   return out;
 
 }
@@ -649,7 +652,8 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood of current state
   // Rcout << "Current likelihood";
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double original_loglik = tree->loglik == 0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
+  double ll_before = tree->loglik;
   ll_before += log(1.0 - leaf_prior);
 
   // Get transition probability
@@ -678,6 +682,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
   if(log(unif_rand()) > log_trans_prob) {
     leaf->DeleteLeaves();
     leaf->var = 0;
+    tree->loglik = original_loglik;
   }
   else {
     // Rcout << "Accept!";
@@ -696,7 +701,8 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double ll_before = LogLT(tree, Y, X, hypers) +
+  double original_loglik = tree->loglik == 0 ? LogLT(tree, Y, X, hypers) : tree_loglik;
+  double ll_before = original_loglik +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
   // Compute forward transition prob
@@ -722,6 +728,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->left = left;
     branch->right = right;
     branch->is_leaf = false;
+    tree->loglik = original_loglik;
   }
   else {
     delete left;
@@ -736,7 +743,8 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
   Node* branch = rand(ngb);
 
   // Calculate likelihood before proposal
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double original_loglik = tree->loglik == 0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
+  // double ll_before = LogLT(tree, Y, X, hypers);
 
   // save old split
   int old_feature = branch->var;
@@ -761,6 +769,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->val = old_value;
     branch->lower = old_lower;
     branch->upper = old_upper;
+    tree->loglik = original_loglik;
   }
 
 }

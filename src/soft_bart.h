@@ -76,6 +76,7 @@ struct Node {
 
   // Data for computing weights
   double current_weight;
+  double loglik_tree;
 
   // Functions
   void Root(const Hypers& hypers);
