@@ -35,7 +35,7 @@ Node::Node() {
   tau = 1.0;
   mu = 0.0;
   current_weight = 0.0;
-  loglik_tree = 0.0;
+  loglik = 0.0;
 }
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
@@ -159,7 +159,7 @@ void Node::AddLeaves() {
   left->upper = 1.0;
   left->mu = 0.0;
   left->current_weight = 0.0;
-  left->loglik = 0.0
+  left->loglik = 0.0;
   left->tau = tau;
   right->is_leaf = true;
   right->parent = this;
@@ -172,7 +172,7 @@ void Node::AddLeaves() {
   right->upper = 1.0;
   right->mu = 0.0;
   right->current_weight = 0.0;
-  right->loglik = 0.0
+  right->loglik = 0.0;
   right->tau = tau;
 
 }
@@ -701,7 +701,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double original_loglik = tree->loglik == 0.0 ? LogLT(tree, Y, X, hypers) : tree_loglik;
+  double original_loglik = tree->loglik == 0.0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
   double ll_before = original_loglik +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
@@ -1112,9 +1112,9 @@ void Node::UpdateTau(const arma::vec& Y,
   double tau_old = tau;
   double original_loglik = loglik == 0.0 ? LogLT(this, Y, X, hypers) : loglik;
   double tau_new = tau_proposal(tau);
-  tau = SetTau(tau_new);
+  SetTau(tau_new);
   double new_loglik = LogLT(this, Y, X, hypers);
-  loglik = LogLT(this, Y, X);
+  loglik = LogLT(this, Y, X, hypers);
 
   double loglik_new = loglik + logprior_tau(tau_new, hypers.tau_rate);
   double loglik_old = new_loglik + logprior_tau(tau_old, hypers.tau_rate);
