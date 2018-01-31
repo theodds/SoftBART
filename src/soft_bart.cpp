@@ -652,7 +652,8 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood of current state
   // Rcout << "Current likelihood";
-  double original_loglik = tree->loglik == 0.0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
+  double original_loglik = tree->loglik;
+  if(tree->loglik == 0.0) original_loglik = LogLT(tree, Y, X, hypers);
   double ll_before = tree->loglik;
   ll_before += log(1.0 - leaf_prior);
 
@@ -701,7 +702,8 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double original_loglik = tree->loglik == 0.0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
+  double original_loglik = tree->loglik;
+  if(tree->loglik == 0.0) original_loglik = LogLT(tree, Y, X, hypers);
   double ll_before = original_loglik +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
@@ -743,7 +745,8 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
   Node* branch = rand(ngb);
 
   // Calculate likelihood before proposal
-  double original_loglik = tree->loglik == 0.0 ? LogLT(tree, Y, X, hypers) : tree->loglik;
+  double original_loglik = tree->loglik;
+  if(tree->loglik == 0.0) original_loglik = LogLT(tree, Y, X, hypers);
   double ll_before = original_loglik;
   // double ll_before = LogLT(tree, Y, X, hypers);
 
@@ -1110,14 +1113,14 @@ void Node::UpdateTau(const arma::vec& Y,
                      const Hypers& hypers) {
 
   double tau_old = tau;
-  double original_loglik = loglik == 0.0 ? LogLT(this, Y, X, hypers) : loglik;
+  double original_loglik = loglik;
+  if(loglik == 0.0) original_loglik = LogLT(this, Y, X, hypers);
   double tau_new = tau_proposal(tau);
   SetTau(tau_new);
   double new_loglik = LogLT(this, Y, X, hypers);
-  loglik = LogLT(this, Y, X, hypers);
 
-  double loglik_new = loglik + logprior_tau(tau_new, hypers.tau_rate);
-  double loglik_old = new_loglik + logprior_tau(tau_old, hypers.tau_rate);
+  double loglik_new = new_loglik + logprior_tau(tau_new, hypers.tau_rate);
+  double loglik_old = original_loglik + logprior_tau(tau_old, hypers.tau_rate);
   double new_to_old = log_tau_trans(tau_old);
   double old_to_new = log_tau_trans(tau_new);
 
