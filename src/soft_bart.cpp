@@ -614,10 +614,10 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
-    if(unif_rand() < .1) {
-      forest[t]->UpdateTau(res, X, hypers);
-    }
-    else if(forest[t]->is_leaf || unif_rand() < MH_BD) {
+    // if(unif_rand() < .1) {
+    //   forest[t]->UpdateTau(res, X, hypers);
+    // }
+    if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
       birth_death(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
@@ -628,7 +628,7 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
       // Rcout << "Done";
     }
     // if(opts.update_tau) ;
-    // forest[t]->UpdateMu(res, X, hypers);
+    forest[t]->UpdateMu(res, X, hypers);
     Y_hat = Y_star + predict(forest[t], X, hypers);
   }
 }
