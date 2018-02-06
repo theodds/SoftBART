@@ -56,6 +56,35 @@ struct Hypers {
 
 };
 
+struct SuffStats {
+  arma::vec mu_hat;
+  arma::mat Omega_inv_hat;
+  int N;
+
+  SuffStats(Node* tree, const arma::vec& Y, const arma::mat& X,
+            const Hypers& hypers) {
+    N = Y.size();
+    std::vector<Node*> leafs = leaves(tree);
+    int num_leaves = leafs.size();
+    mu = zeros<vec>(num_leaves);
+    Omega_inv = zeros<mat>(num_leaves, num_leaves);
+    GetSuffStats(tree,Y,X,hypers,mu,Omega);
+  }
+
+  double LogLT(const Hypers& hypers) {
+    double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
+    out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
+    double val, sign;
+    log_det(val, sign, Omega_inv / M_2_PI);
+    out -= 0.5 * val;
+    out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
+    out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
+
+    return out;
+  }
+  
+};
+
 struct Node {
 
   bool is_leaf;
@@ -184,7 +213,8 @@ void GetSuffStats(Node* n, const arma::vec& y,
 
 double LogLT(Node* n, const arma::vec& Y,
              const arma::mat& X, const Hypers& hypers);
-
+double LogLTSS(const arma::vec mu_hat, const arma::mat Omega_inv,
+               const Hypers& hypers, const arma::vec& Y);
 double cauchy_jacobian(double tau, double sigma_hat);
 
 double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
@@ -297,6 +327,7 @@ void RenormDeleteTree(std::vector<Node*>& forest,
 void UnnormDeleteTree(std::vector<Node*>& forest,
                       std::vector<Node*>& new_forest,
                       Hypers& hypers);
+
 
 // Slice sampler
 

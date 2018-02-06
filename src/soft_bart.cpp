@@ -289,6 +289,7 @@ double LogLT(Node* n, const arma::vec& Y,
 
 }
 
+
 double cauchy_jacobian(double tau, double sigma_hat) {
   double sigma = pow(tau, -0.5);
   int give_log = 1;
@@ -328,17 +329,28 @@ void Hypers::UpdateSigmaMu(const arma::vec& means) {
   sigma_mu = update_sigma(means, sigma_mu_hat, sigma_mu);
 }
 
-void Node::UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers) {
+// void Node::UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers) {
+
+//   std::vector<Node*> leafs = leaves(this);
+//   int num_leaves = leafs.size();
+
+//   // Get mean and covariance
+//   vec mu_hat = zeros<vec>(num_leaves);
+//   mat Omega_inv = zeros<mat>(num_leaves, num_leaves);
+//   GetSuffStats(this, Y, X, hypers, mu_hat, Omega_inv);
+
+//   vec mu_samp = rmvnorm(mu_hat, Omega_inv);
+//   for(int i = 0; i < num_leaves; i++) {
+//     leafs[i]->mu = mu_samp(i);
+//   }
+// }
+
+void Node::UpdateMu(const SuffStats& suff_stats, const Hypers& hypers) {
 
   std::vector<Node*> leafs = leaves(this);
   int num_leaves = leafs.size();
 
-  // Get mean and covariance
-  vec mu_hat = zeros<vec>(num_leaves);
-  mat Omega_inv = zeros<mat>(num_leaves, num_leaves);
-  GetSuffStats(this, Y, X, hypers, mu_hat, Omega_inv);
-
-  vec mu_samp = rmvnorm(mu_hat, Omega_inv);
+  vec mu_samp = rmvnorm(suff_stats.mu, suff_stats.Omega_inv);
   for(int i = 0; i < num_leaves; i++) {
     leafs[i]->mu = mu_samp(i);
   }
@@ -602,18 +614,21 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
-    if(forest[t]->is_leaf || unif_rand() < MH_BD) {
+    if(unif_rand() < .1) {
+      forest[t]->UpdateTau(res, X, hypers);
+    }
+    else if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
-      birth_death(forest[t], X, res, hypers);
+      birth_death(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
     else {
       // Rcout << "Change step";
-      change_decision_rule(forest[t], X, res, hypers);
+      change_decision_rule(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
-    if(opts.update_tau) forest[t]->UpdateTau(res, X, hypers);
-    forest[t]->UpdateMu(res, X, hypers);
+    // if(opts.update_tau) ;
+    // forest[t]->UpdateMu(res, X, hypers);
     Y_hat = Y_star + predict(forest[t], X, hypers);
   }
 }
@@ -623,21 +638,21 @@ double activation(double x, double c, double tau) {
 }
 
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 const Hypers& hypers) {
+                 const Hypers& hypers, const Opts& opts) {
 
 
   double p_birth = probability_node_birth(tree);
 
   if(unif_rand() < p_birth) {
-    node_birth(tree, X, Y, hypers);
+    node_birth(tree, X, Y, hypers, opts);
   }
   else {
-    node_death(tree, X, Y, hypers);
+    node_death(tree, X, Y, hypers, opts);
   }
 }
 
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers) {
+                const Hypers& hypers, const Opts& opts) {
 
   // Rcout << "Sample leaf";
   double leaf_probability = 0.0;
@@ -649,7 +664,8 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood of current state
   // Rcout << "Current likelihood";
-  double ll_before = LogLT(tree, Y, X, hypers);
+  SuffStats ss_before(tree, Y, X, hypers);
+  double ll_before = ss_before.LogLT(hypers);
   ll_before += log(1.0 - leaf_prior);
 
   // Get transition probability
@@ -660,9 +676,17 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
   // Rcout << "Birth";
   leaf->BirthLeaves(hypers);
 
+
+  // Propose tau
+  double tau_old = tree->tau;
+  double tau_new = tau_proposal(tree->tau);
+  tree->SetTau(tau_new);
+
+
   // Get likelihood after
   // Rcout << "New Likelihood";
-  double ll_after = LogLT(tree, Y, X, hypers);
+  SuffStats ss_after(tree, Y, X, hypers);
+  double ll_after = ss_after.LogLT(hypers);
   ll_after += log(leaf_prior) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers)) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers));
@@ -674,18 +698,21 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
   double p_backward = log((1.0 - probability_node_birth(tree)) * p_not_grand);
 
   // Do MH
-  double log_trans_prob = ll_after + p_backward - ll_before - p_forward;
+  double log_trans_prob = ll_after + p_backward - ll_before - p_forward
+    + logprior_tau(tau_new, hypers.tau_rate) - logprior_tau(tau_old, hypers.tau_rate);
   if(log(unif_rand()) > log_trans_prob) {
     leaf->DeleteLeaves();
     leaf->var = 0;
+    tree->SetTau(tau_old);
+    tree->UpdateMu(ss_before, hypers);
   }
   else {
-    // Rcout << "Accept!";
+    tree->UpdateMu(ss_after,hypers);
   }
 }
 
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers) {
+                const Hypers& hypers, const Opts& opts) {
 
   // Select branch to kill Children
   double p_not_grand = 0.0;
@@ -696,7 +723,9 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double ll_before = LogLT(tree, Y, X, hypers) +
+  SuffStats ss_before(tree, Y, X, hypers);
+  double ll_before = ss_before.LogLT(hypers);
+  double ll_before = ll_before +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
   // Compute forward transition prob
@@ -708,35 +737,44 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->left = branch;
   branch->right = branch;
   branch->is_leaf = true;
+  double tau_old = tree->tau;
+  double tau_new = tau_proposal(tree->tau);
+  tree->SetTau(tau_new);
 
   // Compute likelihood after
-  double ll_after = LogLT(tree, Y, X, hypers) + log(1.0 - leaf_prob);
+  SuffStats ss_after(tree, Y, X, hypers);
+  double ll_after = ss_after.LogLT(hypers) + log(1.0 - leaf_prob);
 
   // Compute backwards transition
   std::vector<Node*> leafs = leaves(tree);
   double p_backwards = log(1.0 / ((double)(leafs.size())) * probability_node_birth(tree));
 
   // Do MH and fix dangles
-  double log_trans_prob = ll_after + p_backwards - ll_before - p_forward;
+  double log_trans_prob = ll_after + p_backwards - ll_before - p_forward
+    + logprior_tau(tau_new, hypers.tau_rate) - logprior_tau(tau_old, hypers.tau_rate);
   if(log(unif_rand()) > log_trans_prob) {
     branch->left = left;
     branch->right = right;
     branch->is_leaf = false;
+    tree->SetTau(tau_old);
+    tree->UpdateMu(ss_before, hypers);
   }
   else {
     delete left;
     delete right;
+    tree->UpdateMu(ss_after, hypers);
   }
 }
 
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
-                          const Hypers& hypers) {
+                          const Hypers& hypers, const Opts& opts) {
 
   std::vector<Node*> ngb = not_grand_branches(tree);
   Node* branch = rand(ngb);
 
   // Calculate likelihood before proposal
-  double ll_before = LogLT(tree, Y, X, hypers);
+  SuffStats ss_before(tree, Y, X, hypers);
+  double ll_before = ss_before.LogLT(hypers);
 
   // save old split
   int old_feature = branch->var;
@@ -749,18 +787,28 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->var = hypers.SampleVar();
   branch->GetLimits();
   branch->val = (branch->upper - branch->lower) * unif_rand() + branch->lower;
+  double tau_old = tree->tau;
+  double tau_new = tau_proposal(tree->tau);
+  tree->SetTau(tau_new);
 
   // Calculate likelihood after proposal
-  double ll_after = LogLT(tree, Y, X, hypers);
+  SuffStats ss_after(tree, Y, X, hypers);
+  double ll_after = ss_after.LogLT(hypers);
 
   // Do MH
-  double log_trans_prob = ll_after - ll_before;
+  double log_trans_prob = ll_after - ll_before
+    + logprior_tau(tau_new, hypers.tau_rate) - logprior_tau(tau_old, hypers.tau_rate);
 
   if(log(unif_rand()) > log_trans_prob) {
     branch->var = old_feature;
     branch->val = old_value;
     branch->lower = old_lower;
     branch->upper = old_upper;
+    tree->SetTau(tau_old);
+    tree->UpdateMu(ss_before, hypers);
+  }
+  else {
+    tree->UpdateMu(ss_after,hypers);
   }
 
 }
