@@ -64,6 +64,7 @@ struct SuffStats {
 
   SuffStats(Node* tree, const arma::vec& Y, const arma::mat& X,
             const Hypers& hypers);
+  SuffStats();
   
   double LogLT(const arma::vec& Y, const Hypers& hypers);
 

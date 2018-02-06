@@ -614,20 +614,20 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
-    SuffStats* ss;
+    SuffStats ss;
 
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
-      *ss = birth_death(forest[t], X, res, hypers, opts);
+      ss = birth_death(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
     else {
       // Rcout << "Change step";
-      *ss = change_decision_rule(forest[t], X, res, hypers, opts);
+      ss = change_decision_rule(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
     if(unif_rand() < 1.0) {
-      forest[t]->UpdateTau(*ss, res, X, hypers);
+      forest[t]->UpdateTau(ss, res, X, hypers);
     }
     // forest[t]->UpdateTau(res, X, hypers);
     // forest[t]->UpdateMu(res, X, hypers);
@@ -645,15 +645,15 @@ SuffStats birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   double p_birth = probability_node_birth(tree);
 
-  SuffStats* ss;
+  SuffStats ss;
 
   if(unif_rand() < p_birth) {
-    *ss = node_birth(tree, X, Y, hypers, opts);
+    ss = node_birth(tree, X, Y, hypers, opts);
   }
   else {
-    *ss = node_death(tree, X, Y, hypers, opts);
+    ss = node_death(tree, X, Y, hypers, opts);
   }
-  return *ss;
+  return ss;
 }
 
 SuffStats node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
@@ -1161,7 +1161,7 @@ void Node::UpdateTau(SuffStats& ss, const arma::vec& Y,
   double tau_old = tau;
   double tau_new = tau_proposal(tau);
 
-  double loglik_old = ss.LogLT(Y,hypers) + logprior_tau(tau_new, hypers.tau_rate);
+  double loglik_old = ss.LogLT(Y,hypers) + logprior_tau(tau_old, hypers.tau_rate);
   double loglik_new = loglik_tau(tau_new, X, Y, hypers) + logprior_tau(tau_new, hypers.tau_rate);
 
   double new_to_old = log_tau_trans(tau_old);
@@ -1583,6 +1583,13 @@ SuffStats::SuffStats(Node* tree, const arma::vec& Y, const arma::mat& X,
   mu_hat = zeros<vec>(num_leaves);
   Omega_inv = zeros<mat>(num_leaves, num_leaves);
   GetSuffStats(tree,Y,X,hypers,mu_hat,Omega_inv);
+}
+
+SuffStats::SuffStats() {
+  N = 0;
+  num_leaves = 0;
+  mu_hat = zeros<vec>(1);
+  Omega_inv = zeros<mat>(1,1);
 }
 
 double SuffStats::LogLT(const arma::vec& Y, const Hypers& hypers) {
