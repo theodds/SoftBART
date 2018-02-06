@@ -350,7 +350,7 @@ void Node::UpdateMu(const SuffStats& suff_stats, const Hypers& hypers) {
   std::vector<Node*> leafs = leaves(this);
   int num_leaves = leafs.size();
 
-  vec mu_samp = rmvnorm(suff_stats.mu, suff_stats.Omega_inv);
+  vec mu_samp = rmvnorm(suff_stats.mu_hat, suff_stats.Omega_inv);
   for(int i = 0; i < num_leaves; i++) {
     leafs[i]->mu = mu_samp(i);
   }
@@ -665,7 +665,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
   // Get likelihood of current state
   // Rcout << "Current likelihood";
   SuffStats ss_before(tree, Y, X, hypers);
-  double ll_before = ss_before.LogLT(hypers);
+  double ll_before = ss_before.LogLT(Y, hypers);
   ll_before += log(1.0 - leaf_prior);
 
   // Get transition probability
@@ -686,7 +686,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
   // Get likelihood after
   // Rcout << "New Likelihood";
   SuffStats ss_after(tree, Y, X, hypers);
-  double ll_after = ss_after.LogLT(hypers);
+  double ll_after = ss_after.LogLT(Y, hypers);
   ll_after += log(leaf_prior) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers)) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers));
@@ -724,8 +724,8 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
   SuffStats ss_before(tree, Y, X, hypers);
-  double ll_before = ss_before.LogLT(hypers);
-  double ll_before = ll_before +
+  double ll_before = ss_before.LogLT(Y, hypers);
+  ll_before = ll_before +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
   // Compute forward transition prob
@@ -743,7 +743,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Compute likelihood after
   SuffStats ss_after(tree, Y, X, hypers);
-  double ll_after = ss_after.LogLT(hypers) + log(1.0 - leaf_prob);
+  double ll_after = ss_after.LogLT(Y, hypers) + log(1.0 - leaf_prob);
 
   // Compute backwards transition
   std::vector<Node*> leafs = leaves(tree);
@@ -774,7 +774,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Calculate likelihood before proposal
   SuffStats ss_before(tree, Y, X, hypers);
-  double ll_before = ss_before.LogLT(hypers);
+  double ll_before = ss_before.LogLT(Y, hypers);
 
   // save old split
   int old_feature = branch->var;
@@ -793,7 +793,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Calculate likelihood after proposal
   SuffStats ss_after(tree, Y, X, hypers);
-  double ll_after = ss_after.LogLT(hypers);
+  double ll_after = ss_after.LogLT(Y, hypers);
 
   // Do MH
   double log_trans_prob = ll_after - ll_before
@@ -1560,6 +1560,28 @@ Node::~Node() {
     delete left;
     delete right;
   }
+}
+
+SuffStats::SuffStats(Node* tree, const arma::vec& Y, const arma::mat& X,
+          const Hypers& hypers) {
+  N = Y.size();
+  std::vector<Node*> leafs = leaves(tree);
+  num_leaves = leafs.size();
+  mu_hat = zeros<vec>(num_leaves);
+  Omega_inv = zeros<mat>(num_leaves, num_leaves);
+  GetSuffStats(tree,Y,X,hypers,mu_hat,Omega_inv);
+}
+
+double SuffStats::LogLT(const arma::vec& Y, const Hypers& hypers) {
+  double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
+  out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
+  double val, sign;
+  log_det(val, sign, Omega_inv / M_2_PI);
+  out -= 0.5 * val;
+  out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
+  out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
+  
+  return out;
 }
 
 arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,

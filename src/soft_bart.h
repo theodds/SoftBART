@@ -58,30 +58,16 @@ struct Hypers {
 
 struct SuffStats {
   arma::vec mu_hat;
-  arma::mat Omega_inv_hat;
+  arma::mat Omega_inv;
+  int num_leaves;
   int N;
 
   SuffStats(Node* tree, const arma::vec& Y, const arma::mat& X,
-            const Hypers& hypers) {
-    N = Y.size();
-    std::vector<Node*> leafs = leaves(tree);
-    int num_leaves = leafs.size();
-    mu = zeros<vec>(num_leaves);
-    Omega_inv = zeros<mat>(num_leaves, num_leaves);
-    GetSuffStats(tree,Y,X,hypers,mu,Omega);
-  }
+            const Hypers& hypers);
+  
+  double LogLT(const arma::vec& Y, const Hypers& hypers);
 
-  double LogLT(const Hypers& hypers) {
-    double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
-    out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
-    double val, sign;
-    log_det(val, sign, Omega_inv / M_2_PI);
-    out -= 0.5 * val;
-    out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
-    out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
 
-    return out;
-  }
   
 };
 
@@ -120,6 +106,7 @@ struct Node {
   void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
   double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
+  void UpdateMu(const SuffStats& suff_stats, const Hypers& hypers);
 
   Node();
   ~Node();
@@ -256,13 +243,13 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  const Opts& opts);
 double activation(double x, double c, double tau);
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 const Hypers& hypers);
+                 const Hypers& hypers, const Opts& opts);
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
+                const Hypers& hypers, const Opts& opts);
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
+                const Hypers& hypers, const Opts& opts);
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
-                          const Hypers& hypers);
+                          const Hypers& hypers, const Opts& opts);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
 double probability_node_birth(Node* tree);
