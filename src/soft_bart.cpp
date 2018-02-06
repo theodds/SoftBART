@@ -614,21 +614,23 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
-    // if(unif_rand() < .1) {
-    //   forest[t]->UpdateTau(res, X, hypers);
-    // }
+    SuffStats* ss;
+
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
-      birth_death(forest[t], X, res, hypers, opts);
+      *ss = birth_death(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
     else {
       // Rcout << "Change step";
-      change_decision_rule(forest[t], X, res, hypers, opts);
+      *ss = change_decision_rule(forest[t], X, res, hypers, opts);
       // Rcout << "Done";
     }
-    // if(opts.update_tau) ;
-    forest[t]->UpdateMu(res, X, hypers);
+    if(unif_rand() < 1.0) {
+      forest[t]->UpdateTau(*ss, res, X, hypers);
+    }
+    // forest[t]->UpdateTau(res, X, hypers);
+    // forest[t]->UpdateMu(res, X, hypers);
     Y_hat = Y_star + predict(forest[t], X, hypers);
   }
 }
@@ -637,21 +639,24 @@ double activation(double x, double c, double tau) {
   return 1.0 - expit((x - c) / tau);
 }
 
-void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                  const Hypers& hypers, const Opts& opts) {
 
 
   double p_birth = probability_node_birth(tree);
 
+  SuffStats* ss;
+
   if(unif_rand() < p_birth) {
-    node_birth(tree, X, Y, hypers, opts);
+    *ss = node_birth(tree, X, Y, hypers, opts);
   }
   else {
-    node_death(tree, X, Y, hypers, opts);
+    *ss = node_death(tree, X, Y, hypers, opts);
   }
+  return *ss;
 }
 
-void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers, const Opts& opts) {
 
   // Rcout << "Sample leaf";
@@ -705,13 +710,15 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
     leaf->var = 0;
     tree->SetTau(tau_old);
     tree->UpdateMu(ss_before, hypers);
+    return ss_before;
   }
   else {
     tree->UpdateMu(ss_after,hypers);
+    return ss_after;
   }
 }
 
-void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers, const Opts& opts) {
 
   // Select branch to kill Children
@@ -758,15 +765,17 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->is_leaf = false;
     tree->SetTau(tau_old);
     tree->UpdateMu(ss_before, hypers);
+    return ss_before;
   }
   else {
     delete left;
     delete right;
     tree->UpdateMu(ss_after, hypers);
+    return ss_after;
   }
 }
 
-void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
                           const Hypers& hypers, const Opts& opts) {
 
   std::vector<Node*> ngb = not_grand_branches(tree);
@@ -806,9 +815,11 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->upper = old_upper;
     tree->SetTau(tau_old);
     tree->UpdateMu(ss_before, hypers);
+    return ss_before;
   }
   else {
     tree->UpdateMu(ss_after,hypers);
+    return ss_after;
   }
 
 }
@@ -1143,15 +1154,16 @@ double Node::loglik_tau(double tau_new, const arma::mat& X,
 
 }
 
-void Node::UpdateTau(const arma::vec& Y,
+void Node::UpdateTau(SuffStats& ss, const arma::vec& Y,
                      const arma::mat& X,
                      const Hypers& hypers) {
 
   double tau_old = tau;
   double tau_new = tau_proposal(tau);
 
+  double loglik_old = ss.LogLT(Y,hypers) + logprior_tau(tau_new, hypers.tau_rate);
   double loglik_new = loglik_tau(tau_new, X, Y, hypers) + logprior_tau(tau_new, hypers.tau_rate);
-  double loglik_old = loglik_tau(tau_old, X, Y, hypers) + logprior_tau(tau_old, hypers.tau_rate);
+
   double new_to_old = log_tau_trans(tau_old);
   double old_to_new = log_tau_trans(tau_new);
 
@@ -1228,7 +1240,8 @@ double logprior_tau(double tau, double tau_rate) {
 
 double tau_proposal(double tau) {
   double U = 2.0 * unif_rand() - 1;
-  return pow(5.0, U) * tau;
+  return pow(1.5, U) * tau;
+  // return std::exp(U) * tau;
   // double w = 0.2 * unif_rand() - 0.1;
   // return tau + w;
 }

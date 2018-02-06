@@ -103,7 +103,7 @@ struct Node {
   void GetW(const arma::mat& X, int i);
   void DeleteLeaves();
   void UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
-  void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
+  void UpdateTau(SuffStats& ss, const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
   double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
   void UpdateMu(const SuffStats& suff_stats, const Hypers& hypers);
@@ -242,13 +242,13 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts);
 double activation(double x, double c, double tau);
-void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                  const Hypers& hypers, const Opts& opts);
-void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers, const Opts& opts);
-void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers, const Opts& opts);
-void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
+SuffStats change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
                           const Hypers& hypers, const Opts& opts);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
