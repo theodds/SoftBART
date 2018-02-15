@@ -371,7 +371,7 @@ double slice_sampler(double x0, rho_loglik& g, double w,
 
   do {
 
-    double x1 = (R - L) * unif_rand() + L;
+    x1 = (R - L) * unif_rand() + L;
     double gx1 = g(x1);
 
     if(gx1 >= logy) break;

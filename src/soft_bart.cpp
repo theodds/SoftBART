@@ -770,10 +770,7 @@ double growth_prior(int leaf_depth, const Hypers& hypers) {
 }
 
 Node* birth_node(Node* tree, double* leaf_node_probability) {
-  // Rcout << "Getting leafs";
   std::vector<Node*> leafs = leaves(tree);
-  // Rcout << "Selecting leafs\n";
-  // Rcout << "number of leafs" << leafs.size();
   Node* leaf = rand(leafs);
   *leaf_node_probability = 1.0 / ((double)leafs.size());
 
