@@ -13,6 +13,7 @@ Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opt
     // trees[i]->GenTree(hypers);
   }
   num_gibbs = 0;
+  tree_counts = zeros<umat>(hypers.s.size(), hypers.num_tree);
 }
 
 Forest::~Forest() {
@@ -1530,7 +1531,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     Y_out.row(i) = tmp.t();
     num_gibbs++;
     if(num_gibbs % opts.num_print == 0) {
-      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " << 
+      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
         hypers.num_tree << std::endl;
     }
   }
@@ -1541,6 +1542,22 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
 void Forest::set_s(const arma::vec& s_) {
   hypers.s = s_;
+  hypers.logs = log(s_);
+}
+
+arma::uvec Forest::get_counts() {
+  return get_var_counts(trees, hypers);
+}
+
+arma::umat Forest::get_tree_counts() {
+  for(int t = 0; t < hypers.num_tree; t++) {
+    std::vector<Node*> tree;
+    tree.resize(0);
+    tree.push_back(trees[t]);
+    tree_counts.col(t) = get_var_counts(tree, hypers);
+  }
+
+  return tree_counts;
 }
 
 RCPP_MODULE(mod_forest) {
@@ -1551,7 +1568,9 @@ RCPP_MODULE(mod_forest) {
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
     .method("get_s", &Forest::get_s)
+    .method("get_counts", &Forest::get_counts)
     .method("set_s", &Forest::set_s)
+    .method("get_tree_counts", &Forest::get_tree_counts)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }

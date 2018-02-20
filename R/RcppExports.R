@@ -2,38 +2,38 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 rmvnorm <- function(mean, Precision) {
-    .Call('SoftBart_rmvnorm', PACKAGE = 'SoftBart', mean, Precision)
+    .Call('_SoftBart_rmvnorm', PACKAGE = 'SoftBart', mean, Precision)
 }
 
 choll <- function(Sigma) {
-    .Call('SoftBart_choll', PACKAGE = 'SoftBart', Sigma)
+    .Call('_SoftBart_choll', PACKAGE = 'SoftBart', Sigma)
 }
 
 rcpparma_hello_world <- function() {
-    .Call('SoftBart_rcpparma_hello_world', PACKAGE = 'SoftBart')
+    .Call('_SoftBart_rcpparma_hello_world', PACKAGE = 'SoftBart')
 }
 
 rcpparma_outerproduct <- function(x) {
-    .Call('SoftBart_rcpparma_outerproduct', PACKAGE = 'SoftBart', x)
+    .Call('_SoftBart_rcpparma_outerproduct', PACKAGE = 'SoftBart', x)
 }
 
 rcpparma_innerproduct <- function(x) {
-    .Call('SoftBart_rcpparma_innerproduct', PACKAGE = 'SoftBart', x)
+    .Call('_SoftBart_rcpparma_innerproduct', PACKAGE = 'SoftBart', x)
 }
 
 rcpparma_bothproducts <- function(x) {
-    .Call('SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
+    .Call('_SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
 }
 
 rlgam <- function(shape) {
-    .Call('SoftBart_rlgam', PACKAGE = 'SoftBart', shape)
+    .Call('_SoftBart_rlgam', PACKAGE = 'SoftBart', shape)
 }
 
 SoftBart <- function(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree) {
-    .Call('SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree)
+    .Call('_SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree)
 }
 
 do_mh <- function(loglik_new, loglik_old, new_to_old, old_to_new) {
-    .Call('SoftBart_do_mh', PACKAGE = 'SoftBart', loglik_new, loglik_old, new_to_old, old_to_new)
+    .Call('_SoftBart_do_mh', PACKAGE = 'SoftBart', loglik_new, loglik_old, new_to_old, old_to_new)
 }
 
