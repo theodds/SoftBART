@@ -158,8 +158,11 @@ class Forest {
   Forest(Rcpp::List hypers_, Rcpp::List opts_);
   ~Forest();
   // arma::vec predict(const arma::mat& X);
-  arma::mat do_gibbs(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, int num_iter);
+  arma::mat do_gibbs(const arma::mat& X,
+                     const arma::vec& Y,
+                     const arma::mat& X_test, int num_iter);
   arma::vec get_s() {return hypers.s;}
+  void set_s(const arma::vec& s_);
   int num_gibbs;
 
 

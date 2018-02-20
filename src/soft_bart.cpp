@@ -1539,6 +1539,10 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
 }
 
+void Forest::set_s(const arma::vec& s_) {
+  hypers.s = s_;
+}
+
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1547,6 +1551,7 @@ RCPP_MODULE(mod_forest) {
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
     .method("get_s", &Forest::get_s)
+    .method("set_s", &Forest::set_s)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }

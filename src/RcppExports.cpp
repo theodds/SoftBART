@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // rmvnorm
 arma::vec rmvnorm(const arma::vec& mean, const arma::mat& Precision);
-RcppExport SEXP _SoftBart_rmvnorm(SEXP meanSEXP, SEXP PrecisionSEXP) {
+RcppExport SEXP SoftBart_rmvnorm(SEXP meanSEXP, SEXP PrecisionSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -20,7 +20,7 @@ END_RCPP
 }
 // choll
 arma::mat choll(const arma::mat& Sigma);
-RcppExport SEXP _SoftBart_choll(SEXP SigmaSEXP) {
+RcppExport SEXP SoftBart_choll(SEXP SigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -31,7 +31,7 @@ END_RCPP
 }
 // rcpparma_hello_world
 arma::mat rcpparma_hello_world();
-RcppExport SEXP _SoftBart_rcpparma_hello_world() {
+RcppExport SEXP SoftBart_rcpparma_hello_world() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -41,7 +41,7 @@ END_RCPP
 }
 // rcpparma_outerproduct
 arma::mat rcpparma_outerproduct(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_outerproduct(SEXP xSEXP) {
+RcppExport SEXP SoftBart_rcpparma_outerproduct(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -52,7 +52,7 @@ END_RCPP
 }
 // rcpparma_innerproduct
 double rcpparma_innerproduct(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_innerproduct(SEXP xSEXP) {
+RcppExport SEXP SoftBart_rcpparma_innerproduct(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -63,7 +63,7 @@ END_RCPP
 }
 // rcpparma_bothproducts
 Rcpp::List rcpparma_bothproducts(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_bothproducts(SEXP xSEXP) {
+RcppExport SEXP SoftBart_rcpparma_bothproducts(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -74,7 +74,7 @@ END_RCPP
 }
 // rlgam
 double rlgam(double shape);
-RcppExport SEXP _SoftBart_rlgam(SEXP shapeSEXP) {
+RcppExport SEXP SoftBart_rlgam(SEXP shapeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -85,7 +85,7 @@ END_RCPP
 }
 // SoftBart
 List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, double num_tree_prob, double temperature, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, bool update_num_tree);
-RcppExport SEXP _SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP temperatureSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP) {
+RcppExport SEXP SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP temperatureSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -126,7 +126,7 @@ END_RCPP
 }
 // do_mh
 bool do_mh(double loglik_new, double loglik_old, double new_to_old, double old_to_new);
-RcppExport SEXP _SoftBart_do_mh(SEXP loglik_newSEXP, SEXP loglik_oldSEXP, SEXP new_to_oldSEXP, SEXP old_to_newSEXP) {
+RcppExport SEXP SoftBart_do_mh(SEXP loglik_newSEXP, SEXP loglik_oldSEXP, SEXP new_to_oldSEXP, SEXP old_to_newSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -139,19 +139,16 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP _rcpp_module_boot_mod_forest();
-
 static const R_CallMethodDef CallEntries[] = {
-    {"_SoftBart_rmvnorm", (DL_FUNC) &_SoftBart_rmvnorm, 2},
-    {"_SoftBart_choll", (DL_FUNC) &_SoftBart_choll, 1},
-    {"_SoftBart_rcpparma_hello_world", (DL_FUNC) &_SoftBart_rcpparma_hello_world, 0},
-    {"_SoftBart_rcpparma_outerproduct", (DL_FUNC) &_SoftBart_rcpparma_outerproduct, 1},
-    {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
-    {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
-    {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
-    {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 31},
-    {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},
-    {"_rcpp_module_boot_mod_forest", (DL_FUNC) &_rcpp_module_boot_mod_forest, 0},
+    {"SoftBart_rmvnorm", (DL_FUNC) &SoftBart_rmvnorm, 2},
+    {"SoftBart_choll", (DL_FUNC) &SoftBart_choll, 1},
+    {"SoftBart_rcpparma_hello_world", (DL_FUNC) &SoftBart_rcpparma_hello_world, 0},
+    {"SoftBart_rcpparma_outerproduct", (DL_FUNC) &SoftBart_rcpparma_outerproduct, 1},
+    {"SoftBart_rcpparma_innerproduct", (DL_FUNC) &SoftBart_rcpparma_innerproduct, 1},
+    {"SoftBart_rcpparma_bothproducts", (DL_FUNC) &SoftBart_rcpparma_bothproducts, 1},
+    {"SoftBart_rlgam", (DL_FUNC) &SoftBart_rlgam, 1},
+    {"SoftBart_SoftBart", (DL_FUNC) &SoftBart_SoftBart, 31},
+    {"SoftBart_do_mh", (DL_FUNC) &SoftBart_do_mh, 4},
     {NULL, NULL, 0}
 };
 
