@@ -83,6 +83,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_groups = group.max() + 1;
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
+  out.zeta = zeros<vec>(out.num_groups);
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -828,25 +829,29 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
   }
 }
 
+void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+  uvec var_counts = get_var_counts(forest, hypers);
+}
+
 /*Note: Because the shape of the Dirichlet will mostly be small, we sample from
   the Dirichlet distribution by sampling log-gamma random variables using the
   technique of Liu, Martin, and Syring (2017+) and normalizing using the
   log-sum-exp trick */
-void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+// void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
-  // Get shape vector
-  vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
-  shape_up = shape_up + get_var_counts(forest, hypers);
+//   // Get shape vector
+//   vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
+//   shape_up = shape_up + get_var_counts(forest, hypers);
 
-  // Sample unnormalized s on the log scale
-  for(int i = 0; i < shape_up.size(); i++) {
-    hypers.logs(i) = rlgam(shape_up(i));
-  }
-  // Normalize s on the log scale, then exponentiate
-  hypers.logs = hypers.logs - log_sum_exp(hypers.logs);
-  hypers.s = exp(hypers.logs);
+//   // Sample unnormalized s on the log scale
+//   for(int i = 0; i < shape_up.size(); i++) {
+//     hypers.logs(i) = rlgam(shape_up(i));
+//   }
+//   // Normalize s on the log scale, then exponentiate
+//   hypers.logs = hypers.logs - log_sum_exp(hypers.logs);
+//   hypers.s = exp(hypers.logs);
 
-}
+// }
 
 // [[Rcpp::export]]
 double rlgam(double shape) {

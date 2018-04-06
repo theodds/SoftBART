@@ -23,6 +23,7 @@ struct Hypers {
   int num_groups;
   arma::vec s;
   arma::vec logs;
+  arma::vec zeta;
   arma::uvec group;
 
   arma::vec rho_propose;
@@ -332,6 +333,24 @@ struct rho_loglik {
 
   }
 };
+
+struct zeta_loglik {
+  uvec var_counts;
+  double alpha;
+  double p;
+
+  double L(vec zeta) {
+    vec logs = zeta - log_sum_exp(zeta);
+    vec ezeta = exp(zeta);
+    double out = sum(var_counts % logs);
+    out = out - p * Rf_lgammafn(alpha / p) + alpha * mean(zeta) - sum(ezeta);
+    return(out);
+  }
+};
+
+arma::vec EllipticalSlice(arma::vec& zeta_0,
+                          zeta_loglik& g,
+                          arma::mat Sigma)
 
 double slice_sampler(double x0, rho_loglik& g, double w,
                      double lower, double upper) {
