@@ -127,6 +127,10 @@ Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
 
 Opts(Rcpp::List opts_) {
 
+  num_burn = opts_["num_burn"];
+  num_thin = opts_["num_thin"];
+  num_save = opts_["num_save"];
+  num_print = opts_["num_print"];
   update_sigma_mu = opts_["update_sigma_mu"];
   update_s = opts_["update_s"];
   update_alpha = opts_["update_alpha"];
@@ -135,10 +139,6 @@ Opts(Rcpp::List opts_) {
   update_tau = opts_["update_tau"];
   update_tau_mean = opts_["update_tau_mean"];
   update_num_tree = opts_["update_num_tree"];
-  num_burn = opts_["num_burn"];
-  num_thin = opts_["num_thin"];
-  num_save = opts_["num_save"];
-  num_print = opts_["num_print"];
 
 }
 

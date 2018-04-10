@@ -1147,7 +1147,7 @@ Hypers::Hypers(Rcpp::List hypers) {
 
   // Deal with other stuff
 
-  s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
+  s = ones<vec>(num_groups) / ((double)(num_groups));
   logs = log(s);
 
   group_to_vars.resize(s.size());
@@ -1515,27 +1515,52 @@ Node::~Node() {
 arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
                            const arma::mat& X_test, int num_iter) {
 
-  vec Y_hat = predict(trees, X, hypers);
-  mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+  // vec Y_hat = predict(trees, X, hypers);
+  vec Y_hat = zeros<vec>(X.n_rows);
+  // mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+  mat Y_out = zeros<mat>(num_iter, X_test.n_cols);
 
   int num_warmup = floor(opts.num_burn / 2.0);
 
-  for(int i = 0; i < num_iter; i++) {
-    if(opts.update_s && (num_gibbs > num_warmup)) {
-      IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+  for(int i = num_gibbs; i < (num_iter + num_gibbs); i++) {
+    if(i < opts.num_burn / 2) {
+        IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+    } else {
+        IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
     }
-    else {
-      IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
-    }
+    // if(opts.update_s && (num_gibbs > num_warmup)) {
+    //   IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+    // }
+    // else {
+    //   IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+    // }
     vec tmp = predict(trees, X_test, hypers);
-    Y_out.row(i) = tmp.t();
-    num_gibbs++;
-    if(num_gibbs % opts.num_print == 0) {
-      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
-        hypers.num_tree << std::endl;
+    // Y_out.row(i) = tmp.t();
+      Y_out.row(i) = trans(hypers.s);
+    if(i % opts.num_print == 0) {
+      Rcout << "\rFinishing iteration " << i << ": alpha = " <<
+        hypers.alpha << "\t\t\t";
+      // Rcout << "Finishing iteration " << i << ": num_trees = " <<
+      //   hypers.num_tree << std::endl;
     }
   }
 
+  // for(int i = 0; i < opts.num_burn; i++) {
+  //   if(i < opts.num_burn / 2) {
+  //     IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+  //   } else {
+  //     IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+  //     if(i % 100 == 0) Rcout << "\ralpha = " << hypers.alpha << "\t\t";
+  //   }
+  // }
+
+  // for(int i = 0; i < opts.num_save; i++) {
+  //   IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+  //   Y_out.row(i) = trans(hypers.s);
+  //   if(i % 100 == 0) Rcout << "\ralpha = " << hypers.alpha << "\t\t";
+  // }
+
+  num_gibbs += num_iter;
   return Y_out;
 
 }
