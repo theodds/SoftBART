@@ -335,22 +335,30 @@ struct rho_loglik {
 };
 
 struct zeta_loglik {
-  uvec var_counts;
-  double alpha;
-  double p;
+  arma::uvec var_counts;
+  double sigma;
 
-  double L(vec zeta) {
-    vec logs = zeta - log_sum_exp(zeta);
-    vec ezeta = exp(zeta);
-    double out = sum(var_counts % logs);
-    out = out - p * Rf_lgammafn(alpha / p) + alpha * mean(zeta) - sum(ezeta);
+  double L(const arma::vec& zeta) {
+
+    int LOWER_TAIL = 1;
+    int NO_LOG = 0;
+    arma::vec z = zeta;
+    for(int i = 0; i < z.size(); i++) {
+      z(i) = sigma * std::log(R::pnorm5(zeta(i), 0.0, 1.0, LOWER_TAIL, NO_LOG));
+    }
+    arma::vec logs = z - log_sum_exp(z);
+    arma::vec ezeta = exp(z);
+    double out = arma::sum(var_counts % logs);
     return(out);
   }
+
+zeta_loglik(const double& s, const arma::uvec& v) : sigma(s), var_counts(v) {;}
+
 };
 
 arma::vec EllipticalSlice(arma::vec& zeta_0,
                           zeta_loglik& g,
-                          arma::mat Sigma)
+                          arma::mat Sigma);
 
 double slice_sampler(double x0, rho_loglik& g, double w,
                      double lower, double upper) {

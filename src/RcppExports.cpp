@@ -72,6 +72,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// TestElliptical
+arma::vec TestElliptical(const arma::vec& zeta_0, const arma::mat& L, const arma::uvec& counts, double sigma);
+RcppExport SEXP _SoftBart_TestElliptical(SEXP zeta_0SEXP, SEXP LSEXP, SEXP countsSEXP, SEXP sigmaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type zeta_0(zeta_0SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type L(LSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    rcpp_result_gen = Rcpp::wrap(TestElliptical(zeta_0, L, counts, sigma));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rlgam
 double rlgam(double shape);
 RcppExport SEXP _SoftBart_rlgam(SEXP shapeSEXP) {
@@ -148,6 +162,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rcpparma_outerproduct", (DL_FUNC) &_SoftBart_rcpparma_outerproduct, 1},
     {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
     {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
+    {"_SoftBart_TestElliptical", (DL_FUNC) &_SoftBart_TestElliptical, 4},
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
     {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 31},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},

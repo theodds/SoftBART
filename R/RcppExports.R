@@ -25,6 +25,10 @@ rcpparma_bothproducts <- function(x) {
     .Call('_SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
 }
 
+TestElliptical <- function(zeta_0, L, counts, sigma) {
+    .Call('_SoftBart_TestElliptical', PACKAGE = 'SoftBart', zeta_0, L, counts, sigma)
+}
+
 rlgam <- function(shape) {
     .Call('_SoftBart_rlgam', PACKAGE = 'SoftBart', shape)
 }

@@ -853,6 +853,61 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
 // }
 
+
+arma::vec EllipticalSlice(const arma::vec& zeta_0,
+                          zeta_loglik& g,
+                          const arma::mat& chol_factor) {
+
+  // Step 1
+  vec nu(zeta_0.size());
+  for(int i = 0; i < zeta_0.size(); i++) nu(i) = norm_rand();
+  nu = chol_factor * nu;
+
+  // Step 2
+  double u = unif_rand();
+  double logy = g.L(zeta_0) + log(u);
+
+  // Step 3
+  double theta = M_2PI * unif_rand();
+  double theta_min = theta - M_2PI;
+  double theta_max = theta;
+
+  vec z;
+  while(true) {
+
+    // Step 4
+    z = nu * sin(theta) + zeta_0 * cos(theta);
+
+    // Step 5
+    if(g.L(z) > logy) {
+      break;
+    }
+
+    // Step 8
+    if(theta < 0) {
+      theta_min = theta;
+    }
+    else {
+      theta_max = theta;
+    }
+    theta = theta_min + (theta_max - theta_min) * unif_rand();
+  }
+
+  return(z);
+}
+
+// [[Rcpp::export]]
+arma::vec TestElliptical(const arma::vec& zeta_0,
+                         const arma::mat& L,
+                         const arma::uvec& counts,
+                         double sigma) {
+
+  zeta_loglik g(sigma, counts);
+
+  return EllipticalSlice(zeta_0, g, L);
+
+}
+
 // [[Rcpp::export]]
 double rlgam(double shape) {
   if(shape >= 0.1) return log(Rf_rgamma(shape, 1.0));
