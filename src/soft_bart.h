@@ -21,8 +21,11 @@ struct Hypers {
   double temperature;
   int num_tree;
   int num_groups;
-  arma::vec s;
-  arma::vec logs;
+  /* arma::vec s; */
+  /* arma::vec logs; */
+  arma::mat s;
+  arma::mat logs;
+  arma::uvec z;
   arma::uvec group;
 
   arma::vec rho_propose;
