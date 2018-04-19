@@ -21,10 +21,10 @@ struct Hypers {
   double temperature;
   int num_tree;
   int num_groups;
-  /* arma::vec s; */
-  /* arma::vec logs; */
-  arma::mat s;
-  arma::mat logs;
+  arma::vec s;
+  arma::vec logs;
+  /* arma::mat s; */
+  /* arma::mat logs; */
   arma::uvec z;
   arma::uvec group;
 
@@ -52,7 +52,6 @@ struct Hypers {
   void update_tau(std::vector<Node*>& forest,
                   const arma::mat& X, const arma::vec& Y);
 
-  int SampleVar() const;
 
   Hypers(Rcpp::List hypers);
   Hypers();
@@ -80,8 +79,12 @@ struct Node {
   // Data for computing weights
   double current_weight;
 
+  // New stuff for interaction detection
+  const Hypers* hypers;
+  int tree_number;
+
   // Functions
-  void Root(const Hypers& hypers);
+  void Root(const Hypers& hypers, int i);
   void GetLimits();
   void AddLeaves();
   void BirthLeaves(const Hypers& hypers);
@@ -94,6 +97,7 @@ struct Node {
   void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
   double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
+  int SampleVar() const;
 
   Node();
   ~Node();

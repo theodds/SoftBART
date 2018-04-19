@@ -9,7 +9,7 @@ Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opt
   trees.resize(hypers.num_tree);
   for(int i = 0; i < hypers.num_tree; i++) {
     trees[i] = new Node();
-    trees[i]->Root(hypers);
+    trees[i]->Root(hypers,i);
     // trees[i]->GenTree(hypers);
   }
   num_gibbs = 0;
@@ -115,15 +115,16 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   return out;
 }
 
-int Hypers::SampleVar() const {
+int Node:SampleVar() const {
 
-  int group_idx = sample_class(s);
+  int cluster = hypers->z(tree_number);
+  int group_idx = sample_class(trans(s.row(cluster)));
   int var_idx = sample_class(group_to_vars[group_idx].size());
 
   return group_to_vars[group_idx][var_idx];
 }
 
-void Node::Root(const Hypers& hypers) {
+void Node::Root(const Hypers& hypers, int i) {
   is_leaf = true;
   is_root = true;
   left = this;
@@ -138,6 +139,9 @@ void Node::Root(const Hypers& hypers) {
 
   mu = 0.0;
   current_weight = 1.0;
+
+  this->hypers = &hypers;
+  tree_number = i;
 }
 
 // Check
@@ -160,6 +164,8 @@ void Node::AddLeaves() {
   left->mu = 0.0;
   left->current_weight = 0.0;
   left->tau = tau;
+  left->hypers = hypers;
+  left->tree_number = tree_number;
   right->is_leaf = true;
   right->parent = this;
   right->right = right;
@@ -172,20 +178,21 @@ void Node::AddLeaves() {
   right->mu = 0.0;
   right->current_weight = 0.0;
   right->tau = tau;
-
+  right->hypers = hypers;
+  right->tree_number = tree_number;
 }
 
 void Node::BirthLeaves(const Hypers& hypers) {
   if(is_leaf) {
     AddLeaves();
-    var = hypers.SampleVar();
+    var = SampleVar();
     GetLimits();
     val = (upper - lower) * unif_rand() + lower;
   }
 }
 
 void Node::GenTree(const Hypers& hypers) {
-  Root(hypers);
+  Root(hypers,1);
   GenBelow(hypers);
 }
 
@@ -452,7 +459,7 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
   std::vector<Node*> forest(0);
   for(int t = 0; t < hypers.num_tree; t++) {
     Node* n = new Node;
-    n->Root(hypers);
+    n->Root(hypers,t);
     forest.push_back(n);
   }
   return forest;
@@ -747,7 +754,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Modify the branch
   // branch->var = sample_class(hypers.s);
-  branch->var = hypers.SampleVar();
+  branch->var = SampleVar();
   branch->GetLimits();
   branch->val = (branch->upper - branch->lower) * unif_rand() + branch->lower;
 
