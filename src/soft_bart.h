@@ -34,7 +34,6 @@ struct Hypers {
   arma::mat s;
   arma::mat logs;
   int num_clust;
-  arma::mat var_counts;
 
   double sigma_hat;
   double sigma_mu_hat;
@@ -263,7 +262,7 @@ arma::umat get_var_counts_by_cluster(std::vector<Node*>& forest,
                                      const Hypers& hypers);
 void get_var_counts_by_cluster(arma::umat counts,
                                Node* node,
-                               const Hypers& hypers) 
+                               const Hypers& hypers);
 arma::vec rdirichlet(const arma::vec& shape);
 double alpha_to_rho(double alpha, double scale);
 double rlgam(double shape);

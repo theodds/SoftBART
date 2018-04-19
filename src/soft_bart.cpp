@@ -593,7 +593,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts) {
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
-  // if(opts.update_s) UpdateS(forest, hypers);
+  if(opts.update_s) UpdateS(forest, hypers);
   // if(opts.update_alpha) hypers.UpdateAlpha();
   // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
@@ -880,21 +880,43 @@ void get_var_counts_by_cluster(arma::umat counts,
   the Dirichlet distribution by sampling log-gamma random variables using the
   technique of Liu, Martin, and Syring (2017+) and normalizing using the
   log-sum-exp trick */
-void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
+void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+  
   // Get shape vector
-  vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
-  shape_up = shape_up + get_var_counts(forest, hypers);
+  mat shape_up = ones<mat>(hypers.num_cluster, hypers.num_groups);
+  shape_up = shape_up * hypers.alpha / ((double) hypers.num_groups);
+  shape_up = shape_up + get_var_counts_by_cluster(forest, hypers);
 
   // Sample unnormalized s on the log scale
-  for(int i = 0; i < shape_up.size(); i++) {
-    hypers.logs(i) = rlgam(shape_up(i));
+  for(int k = 0; k < hypers.num_cluster; k++) {
+    vec logs = zeros<vec>(hypers.num_groups);
+    for(int p = 0; p < hypers.num_groups; p++) {
+      logs(p) = rlgam(shape_up(k,p));
+    }
+    logs = logs - log_sum_exp(logs);
+    hypers.s.row(k) = trans(exp(logs));
+    hypers.logs.row(k) = logs;
   }
-  // Normalize s on the log scale, then exponentiate
-  hypers.logs = hypers.logs - log_sum_exp(hypers.logs);
-  hypers.s = exp(hypers.logs);
 
 }
+
+// THIS IS THE OLD UPDATES
+// void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+
+//   // Get shape vector
+//   vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
+//   shape_up = shape_up + get_var_counts(forest, hypers);
+
+//   // Sample unnormalized s on the log scale
+//   for(int i = 0; i < shape_up.size(); i++) {
+//     hypers.logs(i) = rlgam(shape_up(i));
+//   }
+//   // Normalize s on the log scale, then exponentiate
+//   hypers.logs = hypers.logs - log_sum_exp(hypers.logs);
+//   hypers.s = exp(hypers.logs);
+
+// }
 
 // [[Rcpp::export]]
 double rlgam(double shape) {
