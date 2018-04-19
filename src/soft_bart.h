@@ -25,7 +25,7 @@ struct Hypers {
   arma::vec logs;
   /* arma::mat s; */
   /* arma::mat logs; */
-  arma::uvec z;
+  /* arma::uvec z; */
   arma::uvec group;
 
   arma::vec rho_propose;

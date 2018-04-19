@@ -115,13 +115,14 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   return out;
 }
 
-int Node:SampleVar() const {
+int Node::SampleVar() const {
 
-  int cluster = hypers->z(tree_number);
-  int group_idx = sample_class(trans(s.row(cluster)));
-  int var_idx = sample_class(group_to_vars[group_idx].size());
+  // int cluster = hypers->z(tree_number);
+  // int group_idx = sample_class(trans(s.row(cluster)));
+  int group_idx = sample_class(hypers->s);
+  int var_idx = sample_class(hypers->group_to_vars[group_idx].size());
 
-  return group_to_vars[group_idx][var_idx];
+  return hypers->group_to_vars[group_idx][var_idx];
 }
 
 void Node::Root(const Hypers& hypers, int i) {
@@ -491,14 +492,16 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
     if((i+1) % opts.num_print == 0) {
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
-      Rcout << "Finishing warmup " << i + 1
+      Rcout << "\rFinishing warmup " << i + 1
             // << " tau_rate = " << hypers.tau_rate
             << " Number of trees = " << hypers.num_tree
-            << "\n"
+            << "\t\t\t"
         ;
     }
 
   }
+
+  Rcout << std::endl;
 
   // Make arguments to return
   mat Y_hat_train = zeros<mat>(opts.num_save, X.n_rows);
@@ -538,16 +541,19 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
     if((i + 1) % opts.num_print == 0) {
       // Rcout << "Finishing save " << i + 1 << ": tau = " << hypers.width << "\n";
-      Rcout << "Finishing save " << i + 1 << "\n";
+      Rcout << "\rFinishing save " << i + 1 << "\t\t\t";
     }
 
   }
+
+  Rcout << std::endl;
 
   Rcout << "Number of leaves at final iterations:\n";
   for(int t = 0; t < hypers.num_tree; t++) {
     Rcout << leaves(forest[t]).size() << " ";
     if((t + 1) % 10 == 0) Rcout << "\n";
   }
+
 
   List out;
   out["y_hat_train"] = Y_hat_train;
@@ -754,7 +760,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Modify the branch
   // branch->var = sample_class(hypers.s);
-  branch->var = SampleVar();
+  branch->var = tree->SampleVar();
   branch->GetLimits();
   branch->val = (branch->upper - branch->lower) * unif_rand() + branch->lower;
 
