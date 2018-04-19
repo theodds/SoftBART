@@ -70,6 +70,8 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
   int GRID_SIZE = 1000;
 
+  num_tree = 50; // REMOVE ME!!!!!!
+
   Hypers out;
   out.alpha = alpha;
   out.beta = beta;
@@ -95,10 +97,16 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.group = group;
 
   // New stuff for interaction detection
-  out.z = arma::zeros<arma::uvec>(num_tree);
-  out.num_clust = num_tree;
+  // out.num_clust = num_tree;
+  out.num_clust = 5;
   out.s = ones<mat>(out.num_clust, out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
+  out.z = arma::zeros<arma::uvec>(num_tree);
+  out.var_counts = zeros<mat>(out.num_clust, out.num_groups);
+  // FAKE INITIALIZATION, REMOVE ME
+  for(int i = 0; i < num_tree; i++) {
+    out.z(i) = i % 5;
+  }
 
   // Create mapping of group to variables
   out.group_to_vars.resize(out.num_groups);
@@ -844,6 +852,27 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
     counts(group_idx) = counts(group_idx) + 1;
     get_var_counts(counts, node->left, hypers);
     get_var_counts(counts, node->right, hypers);
+  }
+}
+
+arma::umat get_var_counts_by_cluster(std::vector<Node*>& forest,
+                                     const Hypers& hypers) {
+
+  arma::umat counts = zeros<mat>(hypers.num_clust, hypers.num_groups);
+  for(int t = 0; t < forest.size(); t++) {
+    get_var_counts_by_cluster(counts, forest[t], hypers);
+  }
+}
+
+void get_var_counts_by_cluster(arma::umat counts,
+                               Node* node,
+                               const Hypers& hypers) {
+  if(!node->is_leaf) {
+    int group_idx = hypers.group(node->var);
+    int z = hypers.z(node->tree_number);
+    counts(z, group_idx) = counts(z, group_idx) + 1;
+    get_var_counts_by_cluster(counts, node->left, hypers);
+    get_var_counts_by_cluster(counts, node->right, hypers);
   }
 }
 
