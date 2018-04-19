@@ -102,7 +102,6 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.s = ones<mat>(out.num_clust, out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.z = arma::zeros<arma::uvec>(num_tree);
-  out.var_counts = zeros<mat>(out.num_clust, out.num_groups);
   // FAKE INITIALIZATION, REMOVE ME
   for(int i = 0; i < num_tree; i++) {
     out.z(i) = i % 5;
@@ -568,6 +567,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     if((t + 1) % 10 == 0) Rcout << "\n";
   }
 
+  // for(int t = 0; t < hypers.num_tree; t++) {
+  //   Rcout << leaves(forest[t]).size() << " ";
+  //   if((t + 1) % 10 == 0) Rcout << "\n";
+  // }
 
   List out;
   out["y_hat_train"] = Y_hat_train;
@@ -576,6 +579,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["sigma_mu"] = sigma_mu;
   // out["s"] = s;
   // out["alpha"] = alpha;
+  out["fvarcounts"] = get_var_counts_by_cluster(forest, hypers);
+  out["fz"] = hypers.z;
   out["beta"] = beta;
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
@@ -855,16 +860,17 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
   }
 }
 
-arma::umat get_var_counts_by_cluster(std::vector<Node*>& forest,
+arma::mat get_var_counts_by_cluster(std::vector<Node*>& forest,
                                      const Hypers& hypers) {
 
-  arma::umat counts = zeros<mat>(hypers.num_clust, hypers.num_groups);
+  arma::mat counts = zeros<mat>(hypers.num_clust, hypers.num_groups);
   for(int t = 0; t < forest.size(); t++) {
     get_var_counts_by_cluster(counts, forest[t], hypers);
   }
+  return counts;
 }
 
-void get_var_counts_by_cluster(arma::umat counts,
+void get_var_counts_by_cluster(arma::mat& counts,
                                Node* node,
                                const Hypers& hypers) {
   if(!node->is_leaf) {
@@ -884,19 +890,21 @@ void get_var_counts_by_cluster(arma::umat counts,
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
   
   // Get shape vector
-  mat shape_up = ones<mat>(hypers.num_cluster, hypers.num_groups);
+  mat shape_up = ones<mat>(hypers.num_clust, hypers.num_groups);
   shape_up = shape_up * hypers.alpha / ((double) hypers.num_groups);
+  // Rcout << "\nC";
   shape_up = shape_up + get_var_counts_by_cluster(forest, hypers);
+  // Rcout << "\nD";
 
   // Sample unnormalized s on the log scale
-  for(int k = 0; k < hypers.num_cluster; k++) {
+  for(int k = 0; k < hypers.num_clust; k++) {
     vec logs = zeros<vec>(hypers.num_groups);
     for(int p = 0; p < hypers.num_groups; p++) {
       logs(p) = rlgam(shape_up(k,p));
     }
     logs = logs - log_sum_exp(logs);
     hypers.s.row(k) = trans(exp(logs));
-    hypers.logs.row(k) = logs;
+    hypers.logs.row(k) = trans(logs);
   }
 
 }

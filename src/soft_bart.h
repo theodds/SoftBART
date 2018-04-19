@@ -258,9 +258,9 @@ std::vector<Node*> not_grand_branches(Node* tree);
 void not_grand_branches(std::vector<Node*>& ngb, Node* node);
 arma::uvec get_var_counts(std::vector<Node*>& forest, const Hypers& hypers);
 void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers);
-arma::umat get_var_counts_by_cluster(std::vector<Node*>& forest,
+arma::mat get_var_counts_by_cluster(std::vector<Node*>& forest,
                                      const Hypers& hypers);
-void get_var_counts_by_cluster(arma::umat counts,
+void get_var_counts_by_cluster(arma::mat& counts,
                                Node* node,
                                const Hypers& hypers);
 arma::vec rdirichlet(const arma::vec& shape);
