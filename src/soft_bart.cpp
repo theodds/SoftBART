@@ -598,7 +598,8 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts) {
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
-  if(opts.update_s) UpdateS(forest, hypers);
+  // if(opts.update_s) UpdateS(forest, hypers);
+  if(opts.update_s) UpdateSShared(forest, hypers);
   // if(opts.update_alpha) hypers.UpdateAlpha();
   // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
@@ -888,7 +889,7 @@ void get_var_counts_by_cluster(arma::mat& counts,
   log-sum-exp trick */
 
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
-  
+
   // Get shape vector
   mat shape_up = ones<mat>(hypers.num_clust, hypers.num_groups);
   shape_up = shape_up * hypers.alpha / ((double) hypers.num_groups);
@@ -905,6 +906,25 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
     logs = logs - log_sum_exp(logs);
     hypers.s.row(k) = trans(exp(logs));
     hypers.logs.row(k) = trans(logs);
+  }
+
+}
+
+void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
+
+  vec shape_up = ones<vec>(hypers.num_groups)
+    * hypers.alpha / ((double) hypers.num_groups);
+  shape_up = shape_up + get_var_counts(forest, hypers);
+
+  rowvec logs = zeros<vec>(hypers.num_groups);
+  for(int i = 0; i < hypers.num_groups; i++) {
+    logs(i) = rlgam(shape_up(i));
+  }
+  logs = logs - log_sum_exp(logs);
+  rowvec s = exp(logs);
+  for(int k = 0; k < hypers.num_clust; k++) {
+    hypers.s.row(k) = s;
+    hypers.logs.row(k) = logs;
   }
 
 }
