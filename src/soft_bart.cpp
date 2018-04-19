@@ -56,6 +56,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
   out.update_num_tree = update_num_tree;
+  out.s_burned = false;
 
   return out;
 
@@ -483,7 +484,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
                         const arma::mat& X_test,
                         Hypers& hypers,
-                        const Opts& opts) {
+                        Opts& opts) {
 
 
   std::vector<Node*> forest = init_forest(X, Y, hypers);
@@ -514,6 +515,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   }
 
+  opts.s_burned = true;
   Rcout << std::endl;
 
   // Make arguments to return
@@ -599,7 +601,14 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
                        const Opts& opts) {
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
   // if(opts.update_s) UpdateS(forest, hypers);
-  if(opts.update_s) UpdateSShared(forest, hypers);
+  if(opts.update_s) {
+    if(opts.s_burned) {
+      UpdateS(forest, hypers);
+    }
+    else {
+      UpdateSShared(forest, hypers); 
+    }
+  }
   // if(opts.update_alpha) hypers.UpdateAlpha();
   // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
@@ -916,11 +925,11 @@ void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
     * hypers.alpha / ((double) hypers.num_groups);
   shape_up = shape_up + get_var_counts(forest, hypers);
 
-  rowvec logs = zeros<vec>(hypers.num_groups);
+  rowvec logs = zeros<rowvec>(hypers.num_groups);
   for(int i = 0; i < hypers.num_groups; i++) {
     logs(i) = rlgam(shape_up(i));
   }
-  logs = logs - log_sum_exp(logs);
+  logs = logs - log_sum_exp(logs.t());
   rowvec s = exp(logs);
   for(int k = 0; k < hypers.num_clust; k++) {
     hypers.s.row(k) = s;

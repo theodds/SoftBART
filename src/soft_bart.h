@@ -123,10 +123,11 @@ struct Opts {
   bool update_tau;
   bool update_tau_mean;
   bool update_num_tree;
+  bool s_burned;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
     update_beta(false), update_gamma(false), update_tau(true),
-    update_tau_mean(false), update_num_tree(false) {
+    update_tau_mean(false), update_num_tree(false), s_burned(false) {
 
   num_burn = 1;
   num_thin = 1;
