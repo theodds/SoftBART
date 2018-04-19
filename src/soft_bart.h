@@ -25,12 +25,15 @@ struct Hypers {
   arma::vec logs;
   /* arma::mat s; */
   /* arma::mat logs; */
-  /* arma::uvec z; */
   arma::uvec group;
 
   arma::vec rho_propose;
 
   std::vector<std::vector<unsigned int> > group_to_vars;
+
+  // New stuff for itneraction detection
+  arma::uvec z;
+  int num_clust;
 
   double sigma_hat;
   double sigma_mu_hat;

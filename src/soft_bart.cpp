@@ -112,6 +112,10 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
     out.rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
   }
 
+  // New stuff for interaction detection
+  out.z = arma::zeros<arma::uvec>(num_tree);
+  out.num_clust = num_tree;
+
   return out;
 }
 
