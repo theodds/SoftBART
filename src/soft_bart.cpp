@@ -13,7 +13,7 @@ Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opt
     // trees[i]->GenTree(hypers);
   }
   num_gibbs = 0;
-  tree_counts = zeros<umat>(hypers.s.size(), hypers.num_tree);
+  tree_counts = zeros<umat>(hypers.num_groups, hypers.num_tree);
 }
 
 Forest::~Forest() {
@@ -81,8 +81,6 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_tree = num_tree;
 
   out.num_groups = group.max() + 1;
-  out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
-  out.logs = log(out.s);
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -96,9 +94,15 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
   out.group = group;
 
+  // New stuff for interaction detection
+  out.z = arma::zeros<arma::uvec>(num_tree);
+  out.num_clust = num_tree;
+  out.s = ones<mat>(out.num_clust, out.num_groups) / ((double)(out.num_groups));
+  out.logs = log(out.s);
+
   // Create mapping of group to variables
-  out.group_to_vars.resize(out.s.size());
-  for(int i = 0; i < out.s.size(); i++) {
+  out.group_to_vars.resize(out.num_groups);
+  for(int i = 0; i < out.num_groups; i++) {
     out.group_to_vars[i].resize(0);
   }
   int P = group.size();
@@ -112,19 +116,17 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
     out.rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
   }
 
-  // New stuff for interaction detection
-  out.z = arma::zeros<arma::uvec>(num_tree);
-  out.num_clust = num_tree;
 
   return out;
 }
 
 int Node::SampleVar() const {
 
-  // int cluster = hypers->z(tree_number);
-  // int group_idx = sample_class(trans(s.row(cluster)));
-  int group_idx = sample_class(hypers->s);
+  int cluster = hypers->z(tree_number);
+  int group_idx = sample_class(trans(hypers->s.row(cluster)));
   int var_idx = sample_class(hypers->group_to_vars[group_idx].size());
+  // int group_idx = sample_class(hypers->s);
+  // int var_idx = sample_class(hypers->group_to_vars[group_idx].size());
 
   return hypers->group_to_vars[group_idx][var_idx];
 }
@@ -512,11 +514,11 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   mat Y_hat_test = zeros<mat>(opts.num_save, X_test.n_rows);
   vec sigma = zeros<vec>(opts.num_save);
   vec sigma_mu = zeros<vec>(opts.num_save);
-  vec alpha = zeros<vec>(opts.num_save);
+  // vec alpha = zeros<vec>(opts.num_save);
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
-  mat s = zeros<mat>(opts.num_save, hypers.s.size());
-  umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
+  // mat s = zeros<mat>(opts.num_save, hypers.s.size());
+  umat var_counts = zeros<umat>(opts.num_save, hypers.num_groups);
   vec tau_rate = zeros<vec>(opts.num_save);
   uvec num_tree = zeros<uvec>(opts.num_save);
   vec loglik = zeros<vec>(opts.num_save);
@@ -533,9 +535,9 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     Y_hat_test.row(i) = trans(predict(forest, X_test, hypers));
     sigma(i) = hypers.sigma;
     sigma_mu(i) = hypers.sigma_mu;
-    s.row(i) = trans(hypers.s);
+    // s.row(i) = trans(hypers.s);
     var_counts.row(i) = trans(get_var_counts(forest, hypers));
-    alpha(i) = hypers.alpha;
+    // alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
@@ -564,8 +566,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["y_hat_test"] = Y_hat_test;
   out["sigma"] = sigma;
   out["sigma_mu"] = sigma_mu;
-  out["s"] = s;
-  out["alpha"] = alpha;
+  // out["s"] = s;
+  // out["alpha"] = alpha;
   out["beta"] = beta;
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
@@ -583,9 +585,9 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts) {
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
-  if(opts.update_s) UpdateS(forest, hypers);
-  if(opts.update_alpha) hypers.UpdateAlpha();
-  if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
+  // if(opts.update_s) UpdateS(forest, hypers);
+  // if(opts.update_alpha) hypers.UpdateAlpha();
+  // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
@@ -828,7 +830,7 @@ void not_grand_branches(std::vector<Node*>& ngb, Node* node) {
 }
 
 arma::uvec get_var_counts(std::vector<Node*>& forest, const Hypers& hypers) {
-  arma::uvec counts = zeros<uvec>(hypers.s.size());
+  arma::uvec counts = zeros<uvec>(hypers.num_groups);
   int num_tree = forest.size();
   for(int t = 0; t < num_tree; t++) {
     get_var_counts(counts, forest[t], hypers);
@@ -915,25 +917,25 @@ double logpdf_beta(double x, double a, double b) {
   return (a-1.0) * log(x) + (b-1.0) * log(1 - x) - Rf_lbeta(a,b);
 }
 
-void Hypers::UpdateAlpha() {
-  arma::vec logliks = zeros<vec>(rho_propose.size());
+// void Hypers::UpdateAlpha() {
+//   arma::vec logliks = zeros<vec>(rho_propose.size());
 
-  rho_loglik loglik;
-  loglik.mean_log_s = mean(logs);
-  loglik.p = (double)s.size();
-  loglik.alpha_scale = alpha_scale;
-  loglik.alpha_shape_1 = alpha_shape_1;
-  loglik.alpha_shape_2 = alpha_shape_2;
+//   rho_loglik loglik;
+//   loglik.mean_log_s = mean(logs);
+//   loglik.p = (double)s.size();
+//   loglik.alpha_scale = alpha_scale;
+//   loglik.alpha_shape_1 = alpha_shape_1;
+//   loglik.alpha_shape_2 = alpha_shape_2;
 
-  for(int i = 0; i < rho_propose.size(); i++) {
-    logliks(i) = loglik(rho_propose(i));
-  }
+//   for(int i = 0; i < rho_propose.size(); i++) {
+//     logliks(i) = loglik(rho_propose(i));
+//   }
 
-  logliks = exp(logliks - log_sum_exp(logliks));
-  double rho_up = rho_propose(sample_class(logliks));
-  alpha = rho_to_alpha(rho_up, alpha_scale);
+//   logliks = exp(logliks - log_sum_exp(logliks));
+//   double rho_up = rho_propose(sample_class(logliks));
+//   alpha = rho_to_alpha(rho_up, alpha_scale);
 
-}
+// }
 
 // void Hypers::UpdateAlpha() {
 
@@ -1167,8 +1169,8 @@ Hypers::Hypers(Rcpp::List hypers) {
   s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
   logs = log(s);
 
-  group_to_vars.resize(s.size());
-  for(int i = 0; i < s.size(); i++) {
+  group_to_vars.resize(num_groups);
+  for(int i = 0; i < num_groups; i++) {
    group_to_vars[i].resize(0);
   }
   int P = group.size();

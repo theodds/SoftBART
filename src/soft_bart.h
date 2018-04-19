@@ -21,10 +21,8 @@ struct Hypers {
   double temperature;
   int num_tree;
   int num_groups;
-  arma::vec s;
-  arma::vec logs;
-  /* arma::mat s; */
-  /* arma::mat logs; */
+  /* arma::vec s; */
+  /* arma::vec logs; */
   arma::uvec group;
 
   arma::vec rho_propose;
@@ -33,6 +31,8 @@ struct Hypers {
 
   // New stuff for itneraction detection
   arma::uvec z;
+  arma::mat s;
+  arma::mat logs;
   int num_clust;
 
   double sigma_hat;
@@ -43,7 +43,7 @@ struct Hypers {
 
   void UpdateSigma(const arma::vec& r);
   void UpdateSigmaMu(const arma::vec& means);
-  void UpdateAlpha();
+  /* void UpdateAlpha(); */
   void UpdateGamma(std::vector<Node*>& forest);
   void UpdateBeta(std::vector<Node*>& forest);
   void UpdateTauRate(const std::vector<Node*>& forest);
