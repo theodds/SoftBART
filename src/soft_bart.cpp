@@ -958,7 +958,21 @@ void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
 void UpdateZ(std::vector<Node*>& forest, Hypers& hypers) {
   for(int t = 0; t < forest.size(); t++) {
     vec logliks = log(hypers.pi);
+    Node* tree = forest[t];
+    ComputeZLoglik(tree, hypers, logliks);
+    vec probs = exp(logliks - log_sum_exp(logliks));
+    hypers.z(t) = sample_class(probs);
+  }
+}
 
+void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks) {
+  if(!tree->is_leaf) {
+    int group_idx = hypers.group(tree->var); 
+    for(int k = 0; k < hypers.num_clust; k++) {
+      logliks(k) = logliks(k) + hypers.logs(k,group_idx);
+    }
+    ComputeZLoglik(tree->left, hypers, logliks);
+    ComputeZLoglik(tree->right, hypers, logliks);
   }
 }
 
