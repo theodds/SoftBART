@@ -1,5 +1,16 @@
 #include "soft_bart.h"
 
+// TODO:
+// I AM IN THE MIDDLE OF WRITING UPDATEZ
+// AFTER THAT I NEED TO UPDATE PI
+// Make it so that omega is properly set as a hyperparameter
+// Add an update for omega
+// Add appropriate update for alpha
+// Add appropriate update for z
+// Make it so that number of clusters is fed in as hyperparameter
+// Make it so that number of trees is no longer fixed at 50
+// Fix the initialization of Hypers, otherwise forest stuff will not work (messed up s, also pi)
+
 using namespace Rcpp;
 using namespace arma;
 
@@ -62,6 +73,10 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
 
 }
 
+arma::vec InitPi(int num_clusters) {
+  return ones<vec>(num_clusters) / ((double) num_clusters);
+}
+
 Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double alpha, double beta,
                   double gamma, double k, double width, double shape,
@@ -75,6 +90,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
   Hypers out;
   out.alpha = alpha;
+  out.omega = 1.0; // REMOVE ME!!!!!
   out.beta = beta;
   out.gamma = gamma;
   out.sigma = sigma_hat;
@@ -104,6 +120,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.logs = log(out.s);
   out.z = arma::zeros<arma::uvec>(num_tree);
   // FAKE INITIALIZATION, REMOVE ME
+  out.pi = InitPi(out.num_clust);
   for(int i = 0; i < num_tree; i++) {
     out.z(i) = i % 5;
   }
@@ -938,6 +955,13 @@ void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
 
 }
 
+void UpdateZ(std::vector<Node*>& forest, Hypers& hypers) {
+  for(int t = 0; t < forest.size(); t++) {
+    vec logliks = log(hypers.pi);
+
+  }
+}
+
 // THIS IS THE OLD UPDATES
 // void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
@@ -1225,6 +1249,7 @@ void Node::UpdateTau(const arma::vec& Y,
 
 Hypers::Hypers() {
   alpha = 1.0;
+  omega = 1.0;
   beta = 2.0;
   gamma = 0.95;
 }
@@ -1233,6 +1258,7 @@ Hypers::Hypers(Rcpp::List hypers) {
   alpha = hypers["alpha"];
   beta = hypers["beta"];
   gamma = hypers["gamma"];
+  omega = 1.0;
   sigma = hypers["sigma"];
   sigma_mu = hypers["sigma_mu"];
   sigma_mu_hat = sigma_mu;

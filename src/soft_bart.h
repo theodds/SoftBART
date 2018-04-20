@@ -10,6 +10,7 @@ struct Node;
 struct Hypers {
 
   double alpha;
+  double omega;
   double beta;
   double gamma;
   double sigma;
@@ -34,6 +35,7 @@ struct Hypers {
   arma::mat s;
   arma::mat logs;
   int num_clust;
+  arma::vec pi;
 
   double sigma_hat;
   double sigma_mu_hat;
@@ -275,6 +277,7 @@ double tree_loglik(Node* node, int node_depth, double gamma, double beta);
 Node* rand(std::vector<Node*> ngb);
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers);
+void UpdateZ(std::vector<Node*>& forest, Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
