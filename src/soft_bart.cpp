@@ -121,6 +121,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.z = arma::zeros<arma::uvec>(num_tree);
   // FAKE INITIALIZATION, REMOVE ME
   out.pi = InitPi(out.num_clust);
+  out.log_pi = log(out.pi);
   for(int i = 0; i < num_tree; i++) {
     out.z(i) = i % 5;
   }
@@ -316,10 +317,10 @@ double LogLT(Node* n, const arma::vec& Y,
   int N = Y.size();
 
   // Rcout << "Compute ";
-  double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
-  out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
+  double out = -0.5 * N * log(M_2PI * pow(hypers.sigma,2)) * hypers.temperature;
+  out -= 0.5 * num_leaves * log(M_2PI * pow(hypers.sigma_mu,2));
   double val, sign;
-  log_det(val, sign, Omega_inv / M_2_PI);
+  log_det(val, sign, Omega_inv / M_2PI);
   out -= 0.5 * val;
   out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
   out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
@@ -554,6 +555,9 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+      if(i > opts.num_save / 2) {
+        UpdatePi(forest, hypers);
+      }
     }
 
     // Save stuff
@@ -621,6 +625,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
   if(opts.update_s) {
     if(opts.s_burned) {
       UpdateS(forest, hypers);
+      UpdateZ(forest, hypers);
     }
     else {
       UpdateSShared(forest, hypers); 
@@ -957,7 +962,7 @@ void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
 
 void UpdateZ(std::vector<Node*>& forest, Hypers& hypers) {
   for(int t = 0; t < forest.size(); t++) {
-    vec logliks = log(hypers.pi);
+    vec logliks = hypers.log_pi;
     Node* tree = forest[t];
     ComputeZLoglik(tree, hypers, logliks);
     vec probs = exp(logliks - log_sum_exp(logliks));
@@ -974,6 +979,21 @@ void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks) {
     ComputeZLoglik(tree->left, hypers, logliks);
     ComputeZLoglik(tree->right, hypers, logliks);
   }
+}
+
+void UpdatePi(std::vector<Node*>& forest, Hypers& hypers) {
+  vec shape_up = ones<vec>(hypers.num_clust) * hypers.omega / hypers.num_clust;
+  for(int t = 0; t < forest.size(); t++) {
+    int z = hypers.z(t);
+    shape_up(z) = shape_up(z) + 1;
+  }
+  vec log_pi_up = zeros<vec>(hypers.num_clust);
+  for(int k = 0; k < hypers.num_clust; k++) {
+    log_pi_up(k) = rlgam(shape_up(k));
+  }
+  log_pi_up = log_pi_up - log_sum_exp(log_pi_up);
+  hypers.log_pi = log_pi_up;
+  hypers.pi = exp(log_pi_up);
 }
 
 // THIS IS THE OLD UPDATES
@@ -1166,7 +1186,7 @@ Node* rand(std::vector<Node*> ngb) {
 
 // double loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
 //   vec res = Y - Y_hat;
-//   double out = -0.5 * Y.size() * log(M_2_PI * pow(hypers.sigma,2.0)) -
+//   double out = -0.5 * Y.size() * log(M_2PI * pow(hypers.sigma,2.0)) -
 //     dot(res, res) * 0.5 / pow(hypers.sigma,2.0);
 //   return out;
 // }
@@ -1175,7 +1195,7 @@ arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& 
   vec res = Y - Y_hat;
   vec out = zeros<vec>(Y.size());
   for(int i = 0; i < Y.size(); i++) {
-    out(i) = -0.5 * log(M_2_PI * pow(hypers.sigma,2)) - 0.5 * pow(res(i) / hypers.sigma, 2);
+    out(i) = -0.5 * log(M_2PI * pow(hypers.sigma,2)) - 0.5 * pow(res(i) / hypers.sigma, 2);
   }
   return out;
 }
@@ -1457,7 +1477,7 @@ double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
 double loglik_normal(const arma::vec& resid, const double& sigma) {
   double N = resid.size();
   double SSE = dot(resid, resid);
-  return -0.5 * N * log(M_2_PI * pow(sigma, 2)) - 0.5 * SSE / pow(sigma, 2);
+  return -0.5 * N * log(M_2PI * pow(sigma, 2)) - 0.5 * SSE / pow(sigma, 2);
 }
 
 void BirthTree(std::vector<Node*>& forest,

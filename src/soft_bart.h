@@ -36,6 +36,7 @@ struct Hypers {
   arma::mat logs;
   int num_clust;
   arma::vec pi;
+  arma::vec log_pi;
 
   double sigma_hat;
   double sigma_mu_hat;
@@ -278,6 +279,8 @@ Node* rand(std::vector<Node*> ngb);
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateZ(std::vector<Node*>& forest, Hypers& hypers);
+void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks);
+void UpdatePi(std::vector<Node*>& forest, Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
