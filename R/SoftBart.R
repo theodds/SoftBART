@@ -24,7 +24,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
                    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
-                   temperature = 1.0) {
+                   temperature = 1.0, num_clust = 5) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
@@ -58,6 +58,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
   out$tau_rate                         <- tau_rate
   out$num_tree_prob                    <- num_tree_prob
   out$temperature                      <- temperature
+  out$num_clust                        <- num_clust
 
   return(out)
 
@@ -183,6 +184,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$tau_rate,
                   hypers$num_tree_prob,
                   hypers$temperature,
+                  hypers$num_clust,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,

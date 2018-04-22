@@ -82,11 +82,9 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature) {
+                  double temperature, int num_clust) {
 
   int GRID_SIZE = 1000;
-
-  num_tree = 50; // REMOVE ME!!!!!!
 
   Hypers out;
   out.alpha = alpha;
@@ -115,7 +113,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
   // New stuff for interaction detection
   // out.num_clust = num_tree;
-  out.num_clust = 5;
+  out.num_clust = num_clust;
   out.s = ones<mat>(out.num_clust, out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.z = arma::zeros<arma::uvec>(num_tree);
@@ -123,7 +121,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.pi = InitPi(out.num_clust);
   out.log_pi = log(out.pi);
   for(int i = 0; i < num_tree; i++) {
-    out.z(i) = i % 5;
+    out.z(i) = i % num_clust;
   }
 
   // Create mapping of group to variables
@@ -498,6 +496,50 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
   return forest;
 }
 
+// std::vector<std::vector<std::vector<int>>> init_interaction_list(int num_tree,
+//                                                                  int num_iter) {
+//   std::vector<std::vector<std::vector<int>>> out;
+//   out.reserve(num_iter);
+//   for(int i = 0; i < num_tree; i++) {
+//     std::vector<std::vector<int>> tmp;
+//     tmp.reserve(num_tree);
+//     out.push_back(tmp);
+//   }
+//   return out;
+// }
+
+void get_var_counts_sparse(arma::sp_mat& out, Node* node, const Hypers& hypers) {
+  if(!node->is_leaf) {
+    int group_idx = hypers.group(node->var);
+    out(group_idx) = out(group_idx) + 1;
+    get_var_counts_sparse(out, node->left, hypers);
+    get_var_counts_sparse(out, node->right, hypers);
+  }
+}
+
+arma::sp_mat get_var_counts_sparse(Node* tree, const Hypers& hypers) {
+  sp_mat out(hypers.num_groups, 1);
+  get_var_counts_sparse(out, tree, hypers);
+  return out;
+}
+
+std::vector<std::vector<int> > get_interactions(std::vector<Node*>& forest, const Hypers& hypers) {
+  std::vector<std::vector<int> > out;
+  int num_tree = forest.size();
+  out.reserve(num_tree);
+  for(int t = 0; t < num_tree; t++) {
+    std::vector<int> tmp;
+    sp_mat var_counts = get_var_counts_sparse(forest[t], hypers);
+    sp_mat::const_iterator start = var_counts.begin();
+    sp_mat::const_iterator end   = var_counts.end();
+    for(sp_mat::const_iterator it = start; it != end; ++it) {
+      tmp.push_back(it.row());
+    }
+    out.push_back(tmp);
+  }
+  return out;
+}
+
 Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
                         const arma::mat& X_test,
@@ -541,7 +583,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   mat Y_hat_test = zeros<mat>(opts.num_save, X_test.n_rows);
   vec sigma = zeros<vec>(opts.num_save);
   vec sigma_mu = zeros<vec>(opts.num_save);
-  // vec alpha = zeros<vec>(opts.num_save);
+  vec alpha = zeros<vec>(opts.num_save);
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
   // mat s = zeros<mat>(opts.num_save, hypers.s.size());
@@ -550,6 +592,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   uvec num_tree = zeros<uvec>(opts.num_save);
   vec loglik = zeros<vec>(opts.num_save);
   mat loglik_train = zeros<mat>(opts.num_save, Y_hat.size());
+  std::vector<std::vector<std::vector<int>>> interactions;
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
@@ -557,6 +600,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       if(i > opts.num_save / 2) {
         UpdatePi(forest, hypers);
+        UpdateOmega(hypers);
       }
     }
 
@@ -567,13 +611,14 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     sigma_mu(i) = hypers.sigma_mu;
     // s.row(i) = trans(hypers.s);
     var_counts.row(i) = trans(get_var_counts(forest, hypers));
-    // alpha(i) = hypers.alpha;
+    alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
     loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
     loglik(i) = sum(loglik_train.row(i));
     num_tree(i) = hypers.num_tree;
+    interactions.push_back(get_interactions(forest, hypers));
 
     if((i + 1) % opts.num_print == 0) {
       // Rcout << "Finishing save " << i + 1 << ": tau = " << hypers.width << "\n";
@@ -601,7 +646,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["sigma"] = sigma;
   out["sigma_mu"] = sigma_mu;
   // out["s"] = s;
-  // out["alpha"] = alpha;
+  out["alpha"] = alpha;
   out["fvarcounts"] = get_var_counts_by_cluster(forest, hypers);
   out["fz"] = hypers.z;
   out["beta"] = beta;
@@ -611,6 +656,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["num_tree"] = num_tree;
   out["loglik"] = loglik;
   out["loglik_train"] = loglik_train;
+  out["interactions"] = interactions;
 
 
   return out;
@@ -628,9 +674,10 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
       UpdateZ(forest, hypers);
     }
     else {
-      UpdateSShared(forest, hypers); 
+      UpdateSShared(forest, hypers);
     }
   }
+  if(opts.update_alpha) UpdateAlpha(hypers);
   // if(opts.update_alpha) hypers.UpdateAlpha();
   // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
@@ -972,7 +1019,7 @@ void UpdateZ(std::vector<Node*>& forest, Hypers& hypers) {
 
 void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks) {
   if(!tree->is_leaf) {
-    int group_idx = hypers.group(tree->var); 
+    int group_idx = hypers.group(tree->var);
     for(int k = 0; k < hypers.num_clust; k++) {
       logliks(k) = logliks(k) + hypers.logs(k,group_idx);
     }
@@ -994,6 +1041,14 @@ void UpdatePi(std::vector<Node*>& forest, Hypers& hypers) {
   log_pi_up = log_pi_up - log_sum_exp(log_pi_up);
   hypers.log_pi = log_pi_up;
   hypers.pi = exp(log_pi_up);
+}
+
+void UpdateOmega(Hypers& hypers) {
+  omega_loglik my_loglik(hypers.log_pi, 1.0);
+  // Rcout << "mean_log_pi = " << my_loglik.mean_log_pi << "\n";
+  // Rcout << "K = " << my_loglik.K << "\n";
+  // Rcout << "Scale = " << my_loglik.scale_omega << "\n";
+  hypers.omega = slice_sampler(hypers.omega, my_loglik, 1.0, 0.0, R_PosInf);
 }
 
 // THIS IS THE OLD UPDATES
@@ -1061,6 +1116,24 @@ double rho_to_alpha(double rho, double scale) {
 
 double logpdf_beta(double x, double a, double b) {
   return (a-1.0) * log(x) + (b-1.0) * log(1 - x) - Rf_lbeta(a,b);
+}
+
+void UpdateAlpha(Hypers& hypers) {
+  rho_loglik my_loglik;
+  uvec unique_z = unique(hypers.z);
+  my_loglik.p = hypers.s.n_cols;
+  my_loglik.k = unique_z.size();
+  my_loglik.alpha_scale = hypers.alpha_scale;
+  my_loglik.alpha_shape_1 = hypers.alpha_shape_1;
+  my_loglik.alpha_shape_2 = hypers.alpha_shape_2;
+  my_loglik.sum_log_s = 0.0;
+  for(int i = 0; i < unique_z.size(); i++) {
+    unsigned int z = unique_z(i);
+    my_loglik.sum_log_s += sum(hypers.logs.row(z));
+  }
+  double rho_0 = alpha_to_rho(hypers.alpha, hypers.alpha_scale);
+  double rho_1 = slice_sampler(rho_0, my_loglik, 0.1, 0.0, 1.0);
+  hypers.alpha = rho_to_alpha(rho_1, hypers.alpha_scale);
 }
 
 // void Hypers::UpdateAlpha() {
@@ -1209,6 +1282,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
               double temperature,
+              int num_clust,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
@@ -1221,7 +1295,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature);
+                             alpha_shape_2, tau_rate, num_tree_prob, temperature, num_clust);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
@@ -1740,4 +1814,24 @@ RCPP_MODULE(mod_forest) {
     .method("get_tree_counts", &Forest::get_tree_counts)
     .field("num_gibbs", &Forest::num_gibbs);
 
+}
+
+// [[Rcpp::export]]
+std::vector<std::vector<std::vector<double>>> test_vec() {
+  int num_iter = 1000;
+  int num_tree = 20;
+  std::vector<std::vector<std::vector<double>>> out;
+  out.reserve(num_iter);
+  for(int i = 0; i < num_iter; i++) {
+    std::vector<std::vector<double>> foo;
+    foo.reserve(num_tree);
+    for(int t = 0; t < num_tree; t++) {
+      std::vector<double> foo2(2);
+      foo2[0] = 1.0;
+      foo2[1] = 1.0;
+      foo.push_back(foo2);
+    }
+    out.push_back(foo);
+  }
+  return out;
 }

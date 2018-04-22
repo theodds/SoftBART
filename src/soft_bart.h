@@ -21,6 +21,7 @@ struct Hypers {
   double num_tree_prob;
   double temperature;
   int num_tree;
+  int num_clust;
   int num_groups;
   /* arma::vec s; */
   /* arma::vec logs; */
@@ -34,7 +35,6 @@ struct Hypers {
   arma::uvec z;
   arma::mat s;
   arma::mat logs;
-  int num_clust;
   arma::vec pi;
   arma::vec log_pi;
 
@@ -197,7 +197,7 @@ Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double bet
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature);
+                  double temperature, int num_clust);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,
@@ -281,6 +281,8 @@ void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateZ(std::vector<Node*>& forest, Hypers& hypers);
 void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks);
 void UpdatePi(std::vector<Node*>& forest, Hypers& hypers);
+void UpdateOmega(Hypers& hypers);
+void UpdateAlpha(Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
@@ -330,33 +332,72 @@ void UnnormDeleteTree(std::vector<Node*>& forest,
 
 // Slice sampler
 
-struct rho_loglik {
-  double mean_log_s;
+struct loglik {
+  virtual double operator() (double x) {return 0.0;}
+};
+
+/* struct rho_loglik : loglik { */
+/*   double mean_log_s; */
+/*   double p; */
+/*   double alpha_scale; */
+/*   double alpha_shape_1; */
+/*   double alpha_shape_2; */
+
+/*   double operator() (double rho) { */
+
+/*     double alpha = rho_to_alpha(rho, alpha_scale); */
+
+/*     double loglik = alpha * mean_log_s */
+/*       + Rf_lgammafn(alpha) */
+/*       - p * Rf_lgammafn(alpha / p) */
+/*       + logpdf_beta(rho, alpha_shape_1, alpha_shape_2); */
+
+/*     /\* Rcpp::Rcout << "Term 1: " << alpha * mean_log_s << "\n"; *\/ */
+/*     /\* Rcpp::Rcout << "Term 2:" << Rf_lgammafn(alpha) << "\n"; *\/ */
+/*     /\* Rcpp::Rcout << "Term 3:" << -p * Rf_lgammafn(alpha / p) << "\n"; *\/ */
+/*     /\* Rcpp::Rcout << "Term 4:" << logpdf_beta(rho, alpha_shape_1, alpha_shape_2) << "\n"; *\/ */
+
+/*     return loglik; */
+
+/*   } */
+/* }; */
+
+struct rho_loglik : loglik {
+  double sum_log_s;
   double p;
+  double k;
   double alpha_scale;
   double alpha_shape_1;
   double alpha_shape_2;
 
   double operator() (double rho) {
-
     double alpha = rho_to_alpha(rho, alpha_scale);
 
-    double loglik = alpha * mean_log_s
-      + Rf_lgammafn(alpha)
-      - p * Rf_lgammafn(alpha / p)
-      + logpdf_beta(rho, alpha_shape_1, alpha_shape_2);
-
-    /* Rcpp::Rcout << "Term 1: " << alpha * mean_log_s << "\n"; */
-    /* Rcpp::Rcout << "Term 2:" << Rf_lgammafn(alpha) << "\n"; */
-    /* Rcpp::Rcout << "Term 3:" << -p * Rf_lgammafn(alpha / p) << "\n"; */
-    /* Rcpp::Rcout << "Term 4:" << logpdf_beta(rho, alpha_shape_1, alpha_shape_2) << "\n"; */
+    double loglik = k * Rf_lgammafn(alpha) - k * p * Rf_lgammafn(alpha/p)
+      + alpha / p * sum_log_s + logpdf_beta(rho, alpha_shape_1, alpha_shape_2);
 
     return loglik;
-
   }
 };
 
-double slice_sampler(double x0, rho_loglik& g, double w,
+struct omega_loglik : loglik {
+  double mean_log_pi;
+  double scale_omega;
+  double K;
+
+  double operator() (double omega) {
+    double out = Rf_lgammafn(omega) - K * Rf_lgammafn(omega / K)
+      + omega * mean_log_pi - omega / scale_omega;
+    return out;
+  }
+
+ omega_loglik(arma::vec& log_pi, double scale_omegaa) : scale_omega(scale_omegaa) {
+    mean_log_pi = mean(log_pi);
+    K = (double)log_pi.size();
+  }
+};
+
+double slice_sampler(double x0, loglik& g, double w,
                      double lower, double upper) {
 
 
@@ -380,14 +421,14 @@ double slice_sampler(double x0, rho_loglik& g, double w,
 
     if(L <= lower) break;
     if(g(L) <= logy) break;
-    L -= w;
+    L = L - w;
 
   } while(true);
 
   do {
     if(R >= upper) break;
     if(g(R) <= logy) break;
-    R += w;
+    R = R + w;
   } while(true);
 
   // Shrink interval to lower and upper bounds
