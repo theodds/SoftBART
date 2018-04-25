@@ -243,7 +243,7 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts);
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts);
 double activation(double x, double c, double tau);
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
@@ -254,6 +254,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers);
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
                           const Hypers& hypers);
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
 double probability_node_birth(Node* tree);

@@ -703,10 +703,12 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
 }
 
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
+  // double MH_PRIOR = 0.2;
+  double MH_PRIOR = 0.0;
 
   int num_tree = hypers.num_tree;
   for(int t = 0; t < num_tree; t++) {
@@ -714,7 +716,10 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
-    if(forest[t]->is_leaf || unif_rand() < MH_BD) {
+    if(unif_rand() < MH_PRIOR) {
+      forest[t] = draw_prior(forest[t], X, res, hypers);
+    }
+    else if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
       birth_death(forest[t], X, res, hypers);
       // Rcout << "Done";
@@ -875,6 +880,33 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->upper = old_upper;
   }
 
+}
+
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers) {
+
+  // Compute loglik before
+  Node* tree_0 = tree;
+  int z_0 = hypers.z(tree_0->tree_number);
+  double loglik_before = LogLT(tree_0, Y, X, hypers);
+  
+  // Make new tree and compute loglik after
+  Node* tree_1 = new Node;
+  int z_1 = sample_class(hypers.pi);
+  tree_1->Root(hypers, tree_0->tree_number);
+  tree_1->GenBelow(hypers);
+  hypers.z(tree_1->tree_number) = z_1;
+  double loglik_after = LogLT(tree_1, Y, X, hypers);
+  
+  // Do MH
+  if(log(unif_rand()) < loglik_after - loglik_before) {
+    delete tree_0;
+    tree = tree_1;
+  }
+  else {
+    hypers.z(tree_0->tree_number) = z_0;
+    delete tree_1;
+  }
+  return tree;
 }
 
 double growth_prior(int leaf_depth, const Hypers& hypers) {
