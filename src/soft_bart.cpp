@@ -1,15 +1,10 @@
 #include "soft_bart.h"
 
 // TODO:
-// I AM IN THE MIDDLE OF WRITING UPDATEZ
-// AFTER THAT I NEED TO UPDATE PI
 // Make it so that omega is properly set as a hyperparameter
-// Add an update for omega
-// Add appropriate update for alpha
-// Add appropriate update for z
-// Make it so that number of clusters is fed in as hyperparameter
-// Make it so that number of trees is no longer fixed at 50
 // Fix the initialization of Hypers, otherwise forest stuff will not work (messed up s, also pi)
+// Add ability for user to input their own rate for alpha
+// Fix how things are recorded with burn-in.
 
 using namespace Rcpp;
 using namespace arma;
@@ -117,7 +112,6 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.s = ones<mat>(out.num_clust, out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.z = arma::zeros<arma::uvec>(num_tree);
-  // FAKE INITIALIZATION, REMOVE ME
   out.pi = InitPi(out.num_clust);
   out.log_pi = log(out.pi);
   for(int i = 0; i < num_tree; i++) {
