@@ -551,6 +551,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   vec Y_hat = zeros<vec>(X.n_rows);
 
+  double alpha_init = hypers.alpha;
   // Do burn_in
 
   for(int i = 0; i < opts.num_burn; i++) {
@@ -576,6 +577,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   }
 
   opts.s_burned = true;
+  hypers.alpha = alpha_init;
   Rcout << std::endl;
 
   // Make arguments to return
@@ -598,7 +600,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
-      if(i > opts.num_save / 2) {
+      if(i > opts.num_save / 3) {
         UpdatePi(forest, hypers);
         UpdateOmega(hypers);
       }
@@ -672,12 +674,13 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
     if(opts.s_burned) {
       UpdateS(forest, hypers);
       UpdateZ(forest, hypers);
+      if(opts.update_alpha) UpdateAlpha(hypers);
     }
     else {
       UpdateSShared(forest, hypers);
+      if(opts.update_alpha) UpdateAlphaShared(hypers);
     }
   }
-  if(opts.update_alpha) UpdateAlpha(hypers);
   // if(opts.update_alpha) hypers.UpdateAlpha();
   // if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
@@ -707,8 +710,8 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
-  // double MH_PRIOR = 0.2;
-  double MH_PRIOR = 0.0;
+  double MH_PRIOR = 0.2;
+  // double MH_PRIOR = 0.0;
 
   int num_tree = hypers.num_tree;
   for(int t = 0; t < num_tree; t++) {
@@ -892,9 +895,9 @@ Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hyp
   // Make new tree and compute loglik after
   Node* tree_1 = new Node;
   int z_1 = sample_class(hypers.pi);
+  hypers.z(tree_0->tree_number) = z_1;
   tree_1->Root(hypers, tree_0->tree_number);
   tree_1->GenBelow(hypers);
-  hypers.z(tree_1->tree_number) = z_1;
   double loglik_after = LogLT(tree_1, Y, X, hypers);
   
   // Do MH
@@ -1150,23 +1153,49 @@ double logpdf_beta(double x, double a, double b) {
   return (a-1.0) * log(x) + (b-1.0) * log(1 - x) - Rf_lbeta(a,b);
 }
 
-void UpdateAlpha(Hypers& hypers) {
+void UpdateAlphaShared(Hypers& hypers) {
   rho_loglik my_loglik;
+  my_loglik.p = hypers.s.n_cols;
+  my_loglik.k = 1.0;
+  my_loglik.alpha_scale = hypers.alpha_scale;
+  my_loglik.alpha_shape_1 = hypers.alpha_shape_1;
+  my_loglik.sum_log_s = sum(hypers.logs.row(0));
+  double rho_0 = alpha_to_rho(hypers.alpha, hypers.alpha_scale);
+  double rho_1 = slice_sampler(rho_0, my_loglik, 1.0, 0.0, 1.0);
+  hypers.alpha = rho_to_alpha(rho_1, hypers.alpha_scale);
+}
+
+void UpdateAlpha(Hypers& hypers) {
+  alpha_exp_loglik my_loglik;
   uvec unique_z = unique(hypers.z);
   my_loglik.p = hypers.s.n_cols;
   my_loglik.k = unique_z.size();
-  my_loglik.alpha_scale = hypers.alpha_scale;
-  my_loglik.alpha_shape_1 = hypers.alpha_shape_1;
-  my_loglik.alpha_shape_2 = hypers.alpha_shape_2;
+  my_loglik.alpha_rate = 1.0;
   my_loglik.sum_log_s = 0.0;
   for(int i = 0; i < unique_z.size(); i++) {
     unsigned int z = unique_z(i);
     my_loglik.sum_log_s += sum(hypers.logs.row(z));
   }
-  double rho_0 = alpha_to_rho(hypers.alpha, hypers.alpha_scale);
-  double rho_1 = slice_sampler(rho_0, my_loglik, 0.1, 0.0, 1.0);
-  hypers.alpha = rho_to_alpha(rho_1, hypers.alpha_scale);
+  hypers.alpha = slice_sampler(hypers.alpha, my_loglik, 1.0, 0.0, R_PosInf);
 }
+
+// void UpdateAlpha(Hypers& hypers) {
+//   rho_loglik my_loglik;
+//   uvec unique_z = unique(hypers.z);
+//   my_loglik.p = hypers.s.n_cols;
+//   my_loglik.k = unique_z.size();
+//   my_loglik.alpha_scale = hypers.alpha_scale;
+//   my_loglik.alpha_shape_1 = hypers.alpha_shape_1;
+//   my_loglik.alpha_shape_2 = hypers.alpha_shape_2;
+//   my_loglik.sum_log_s = 0.0;
+//   for(int i = 0; i < unique_z.size(); i++) {
+//     unsigned int z = unique_z(i);
+//     my_loglik.sum_log_s += sum(hypers.logs.row(z));
+//   }
+//   double rho_0 = alpha_to_rho(hypers.alpha, hypers.alpha_scale);
+//   double rho_1 = slice_sampler(rho_0, my_loglik, 0.1, 0.0, 1.0);
+//   hypers.alpha = rho_to_alpha(rho_1, hypers.alpha_scale);
+// }
 
 // void Hypers::UpdateAlpha() {
 //   arma::vec logliks = zeros<vec>(rho_propose.size());

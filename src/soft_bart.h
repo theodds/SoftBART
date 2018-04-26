@@ -284,6 +284,7 @@ void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks);
 void UpdatePi(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateOmega(Hypers& hypers);
 void UpdateAlpha(Hypers& hypers);
+void UpdateAlphaShared(Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
@@ -376,6 +377,20 @@ struct rho_loglik : loglik {
 
     double loglik = k * Rf_lgammafn(alpha) - k * p * Rf_lgammafn(alpha/p)
       + alpha / p * sum_log_s + logpdf_beta(rho, alpha_shape_1, alpha_shape_2);
+
+    return loglik;
+  }
+};
+
+struct alpha_exp_loglik : loglik {
+  double sum_log_s;
+  double p;
+  double k;
+  double alpha_rate;
+
+  double operator() (double alpha) {
+    double loglik = k * Rf_lgammafn(alpha) - k * p * Rf_lgammafn(alpha/p)
+      + alpha / p * sum_log_s - alpha * alpha_rate;
 
     return loglik;
   }
