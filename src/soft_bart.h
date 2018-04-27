@@ -34,6 +34,7 @@ struct Hypers {
   // New stuff for itneraction detection
   arma::uvec z;
   arma::mat s;
+  arma::vec s_0;
   arma::mat logs;
   arma::vec pi;
   arma::vec log_pi;
@@ -197,7 +198,7 @@ Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double bet
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature, int num_clust);
+                  double temperature, int num_clust, const arma::vec& s_0);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,

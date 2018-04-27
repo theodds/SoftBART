@@ -77,7 +77,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature, int num_clust) {
+                  double temperature, int num_clust, const arma::vec& s_0) {
 
   int GRID_SIZE = 1000;
 
@@ -134,6 +134,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
     out.rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
   }
 
+  out.s_0 = s_0;
 
   return out;
 }
@@ -551,18 +552,32 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   for(int i = 0; i < opts.num_burn; i++) {
 
     // Don't update s for half of the burn-in
-    if(i < opts.num_burn / 2) {
+    if(i < 0.25 * opts.num_burn ) {
       // Rcout << "Iterating Gibbs\n";
       IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
     }
-    else {
+    else if(i < 0.5 * opts.num_burn) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+    }
+    if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
+      hypers.alpha = alpha_init;
+    else if(i < 0.75 * opts.num_burn) {
+      opts.s_burned = true;
+      IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+      UpdatePi(forest, hypers);
+      UpdateOmega(hypers);
+    }
+    else {
+      opts.s_burned = true;
+      IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+      UpdatePi(forest, hypers);
+      UpdateOmega(hypers);
     }
 
     if((i+1) % opts.num_print == 0) {
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
       Rcout << "\rFinishing warmup " << i + 1
-            // << " tau_rate = " << hypers.tau_rate
+        // << " tau_rate = " << hypers.tau_rate
             << " Number of trees = " << hypers.num_tree
             << "\t\t\t"
         ;
@@ -570,8 +585,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   }
 
-  opts.s_burned = true;
-  hypers.alpha = alpha_init;
+  // hypers.alpha = alpha_init;
   Rcout << std::endl;
 
   // Make arguments to return
@@ -594,10 +608,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
-      if(i > opts.num_save / 3) {
-        UpdatePi(forest, hypers);
-        UpdateOmega(hypers);
-      }
+      UpdatePi(forest, hypers);
+      UpdateOmega(hypers);
     }
 
     // Save stuff
@@ -704,7 +716,7 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
-  double MH_PRIOR = 0.2;
+  double MH_PRIOR = 0.5;
   // double MH_PRIOR = 0.0;
 
   int num_tree = hypers.num_tree;
@@ -998,17 +1010,21 @@ void get_var_counts_by_cluster(arma::mat& counts,
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   // Get shape vector
-  mat shape_up = ones<mat>(hypers.num_clust, hypers.num_groups);
-  shape_up = shape_up * hypers.alpha / ((double) hypers.num_groups);
-  // Rcout << "\nC";
+  // OLD
+  // mat shape_up = ones<mat>(hypers.num_clust, hypers.num_groups);
+  // shape_up = shape_up * hypers.alpha / ((double) hypers.num_groups);
+  // shape_up = shape_up + get_var_counts_by_cluster(forest, hypers);
+
+  // NEW
+  mat shape_up = zeros<mat>(hypers.num_clust, hypers.num_groups);
   shape_up = shape_up + get_var_counts_by_cluster(forest, hypers);
-  // Rcout << "\nD";
 
   // Sample unnormalized s on the log scale
   for(int k = 0; k < hypers.num_clust; k++) {
     vec logs = zeros<vec>(hypers.num_groups);
     for(int p = 0; p < hypers.num_groups; p++) {
-      logs(p) = rlgam(shape_up(k,p));
+      // logs(p) = rlgam(shape_up(k,p)); // OLD!
+      logs(p) = rlgam(shape_up(k,p) + hypers.alpha * hypers.s_0(p));
     }
     logs = logs - log_sum_exp(logs);
     hypers.s.row(k) = trans(exp(logs));
@@ -1019,9 +1035,13 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
 void UpdateSShared(std::vector<Node*>& forest, Hypers& hypers) {
 
-  vec shape_up = ones<vec>(hypers.num_groups)
-    * hypers.alpha / ((double) hypers.num_groups);
-  shape_up = shape_up + get_var_counts(forest, hypers);
+  // OLD
+  // vec shape_up = ones<vec>(hypers.num_groups)
+  //   * hypers.alpha / ((double) hypers.num_groups);
+  // shape_up = shape_up + get_var_counts(forest, hypers);
+
+  // NEW
+  vec shape_up = hypers.alpha * hypers.s_0 + get_var_counts(forest, hypers);
 
   rowvec logs = zeros<rowvec>(hypers.num_groups);
   for(int i = 0; i < hypers.num_groups; i++) {
@@ -1337,6 +1357,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
               double temperature,
+              const arma::vec& s_0,
               int num_clust,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
@@ -1350,7 +1371,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature, num_clust);
+                             alpha_shape_2, tau_rate, num_tree_prob, temperature, num_clust, s_0);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
