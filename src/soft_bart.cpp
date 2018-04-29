@@ -551,6 +551,9 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   for(int i = 0; i < opts.num_burn; i++) {
 
+    if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
+      hypers.alpha = alpha_init;
+    
     // Don't update s for half of the burn-in
     if(i < 0.25 * opts.num_burn ) {
       // Rcout << "Iterating Gibbs\n";
@@ -559,19 +562,17 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     else if(i < 0.5 * opts.num_burn) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
     }
-    if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
-      hypers.alpha = alpha_init;
     else if(i < 0.75 * opts.num_burn) {
       opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
-      UpdateOmega(hypers);
+      // UpdateOmega(hypers);
     }
     else {
       opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
-      UpdateOmega(hypers);
+      // UpdateOmega(hypers);
     }
 
     if((i+1) % opts.num_print == 0) {
@@ -609,7 +610,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     for(int b = 0; b < opts.num_thin; b++) {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
-      UpdateOmega(hypers);
+      // UpdateOmega(hypers);
     }
 
     // Save stuff
