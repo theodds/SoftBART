@@ -47,7 +47,8 @@ Node::Node() {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree) {
+              bool update_tau_mean, bool update_num_tree,
+              double mh_bd, double mh_prior) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -63,6 +64,8 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_tau_mean = update_tau_mean;
   out.update_num_tree = update_num_tree;
   out.s_burned = false;
+  out.mh_bd = mh_bd;
+  out.mh_prior = mh_prior;
 
   return out;
 
@@ -553,7 +556,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
     // if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
     //   hypers.alpha = alpha_init;
-    
+
     // Don't update s for half of the burn-in
     if(i < 0.25 * opts.num_burn ) {
       // Rcout << "Iterating Gibbs\n";
@@ -716,8 +719,8 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts) {
 
-  double MH_BD = 0.7;
-  double MH_PRIOR = 0.5;
+  double MH_BD = opts.mh_bd;
+  double MH_PRIOR = opts.mh_prior;
   // double MH_PRIOR = 0.0;
 
   int num_tree = hypers.num_tree;
@@ -898,7 +901,7 @@ Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hyp
   Node* tree_0 = tree;
   int z_0 = hypers.z(tree_0->tree_number);
   double loglik_before = LogLT(tree_0, Y, X, hypers);
-  
+
   // Make new tree and compute loglik after
   Node* tree_1 = new Node;
   int z_1 = sample_class(hypers.pi);
@@ -906,7 +909,7 @@ Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hyp
   tree_1->Root(hypers, tree_0->tree_number);
   tree_1->GenBelow(hypers);
   double loglik_after = LogLT(tree_1, Y, X, hypers);
-  
+
   // Do MH
   if(log(unif_rand()) < loglik_after - loglik_before) {
     delete tree_0;
@@ -1352,7 +1355,7 @@ arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& 
 // [[Rcpp::export]]
 List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               const arma::uvec& group,
-              double alpha, 
+              double alpha,
               double omega,
               double beta, double gamma, double sigma,
               double shape, double width, int num_tree,
@@ -1365,12 +1368,13 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean, bool update_num_tree) {
+              bool update_tau, bool update_tau_mean, bool update_num_tree,
+              double mh_bd, double mh_prior) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean, update_num_tree);
+                       update_tau, update_tau_mean, update_num_tree, mh_bd, mh_prior);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, omega, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,

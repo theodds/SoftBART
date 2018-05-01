@@ -128,6 +128,8 @@ struct Opts {
   bool update_tau_mean;
   bool update_num_tree;
   bool s_burned;
+  double mh_bd;
+  double mh_prior;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
     update_beta(false), update_gamma(false), update_tau(true),
@@ -191,7 +193,8 @@ class Forest {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree);
+              bool update_tau_mean, bool update_num_tree,
+              double mh_bd, double mh_prior);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double omega, double beta,

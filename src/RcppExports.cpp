@@ -84,8 +84,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SoftBart
-List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double omega, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, double num_tree_prob, double temperature, const arma::vec& s_0, int num_clust, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, bool update_num_tree);
-RcppExport SEXP _SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP omegaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP temperatureSEXP, SEXP s_0SEXP, SEXP num_clustSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP) {
+List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double omega, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, double num_tree_prob, double temperature, const arma::vec& s_0, int num_clust, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, bool update_num_tree, double mh_bd, double mh_prior);
+RcppExport SEXP _SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP omegaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP temperatureSEXP, SEXP s_0SEXP, SEXP num_clustSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP, SEXP mh_bdSEXP, SEXP mh_priorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -123,7 +123,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type update_tau(update_tauSEXP);
     Rcpp::traits::input_parameter< bool >::type update_tau_mean(update_tau_meanSEXP);
     Rcpp::traits::input_parameter< bool >::type update_num_tree(update_num_treeSEXP);
-    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree));
+    Rcpp::traits::input_parameter< double >::type mh_bd(mh_bdSEXP);
+    Rcpp::traits::input_parameter< double >::type mh_prior(mh_priorSEXP);
+    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, mh_bd, mh_prior));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -162,7 +164,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
     {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
-    {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 34},
+    {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 36},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},
     {"_SoftBart_test_vec", (DL_FUNC) &_SoftBart_test_vec, 0},
     {"_rcpp_module_boot_mod_forest", (DL_FUNC) &_rcpp_module_boot_mod_forest, 0},
