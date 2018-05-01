@@ -194,7 +194,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_tau_mean, bool update_num_tree);
 
 
-Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
+Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double omega, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,

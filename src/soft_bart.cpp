@@ -73,7 +73,7 @@ arma::vec InitPi(int num_clusters) {
 }
 
 Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
-                  double alpha, double beta,
+                  double alpha, double omega, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
@@ -83,7 +83,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
   Hypers out;
   out.alpha = alpha;
-  out.omega = 1.0; // REMOVE ME!!!!!
+  out.omega = omega;
   out.beta = beta;
   out.gamma = gamma;
   out.sigma = sigma_hat;
@@ -546,13 +546,13 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   vec Y_hat = zeros<vec>(X.n_rows);
 
-  double alpha_init = hypers.alpha;
+  // double alpha_init = hypers.alpha;
   // Do burn_in
 
   for(int i = 0; i < opts.num_burn; i++) {
 
-    if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
-      hypers.alpha = alpha_init;
+    // if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
+    //   hypers.alpha = alpha_init;
     
     // Don't update s for half of the burn-in
     if(i < 0.25 * opts.num_burn ) {
@@ -566,13 +566,13 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
-      // UpdateOmega(hypers);
+      UpdateOmega(hypers);
     }
     else {
       opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
-      // UpdateOmega(hypers);
+      UpdateOmega(hypers);
     }
 
     if((i+1) % opts.num_print == 0) {
@@ -1352,7 +1352,9 @@ arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& 
 // [[Rcpp::export]]
 List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               const arma::uvec& group,
-              double alpha, double beta, double gamma, double sigma,
+              double alpha, 
+              double omega,
+              double beta, double gamma, double sigma,
               double shape, double width, int num_tree,
               double sigma_hat, double k, double alpha_scale,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
@@ -1370,7 +1372,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
                        update_s, update_alpha, update_beta, update_gamma,
                        update_tau, update_tau_mean, update_num_tree);
 
-  Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
+  Hypers hypers = InitHypers(X, group, sigma_hat, alpha, omega, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
                              alpha_shape_2, tau_rate, num_tree_prob, temperature, num_clust, s_0);
 
