@@ -90,7 +90,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, omega = 1, beta = 2, gamma = 0.
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-                 update_tau_mean = FALSE) {
+                 update_tau_mean = FALSE, mh_bd = 0.7, mh_prior = 0.5) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -105,6 +105,8 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_tau_mean <- update_tau_mean
   # out$update_num_tree <- update_num_tree
   out$update_num_tree <- FALSE
+  out$mh_bd           <- mh_bd
+  out$mh_prior        <- mh_prior
 
   return(out)
 
@@ -204,7 +206,9 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_gamma,
                   opts$update_tau,
                   opts$update_tau_mean,
-                  opts$update_num_tree)
+                  opts$update_num_tree,
+                  opts$mh_bd, opts$mh_prior
+                  )
 
 
   a <- min(Y)
