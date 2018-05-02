@@ -480,5 +480,16 @@ double slice_sampler(double x0, loglik& g, double w,
 
 }
 
+// NEW INTERACTION STUFF
+
+
+void get_var_counts_sparse(arma::sp_mat& out, Node* node, const Hypers& hypers);
+arma::sp_mat get_var_counts_sparse(Node* tree, const Hypers& hypers);
+void get_interactions_leaves(std::vector<int> &var_leaf, Node* n);
+std::vector<int> get_interactions_leaves(Node* n);
+std::vector<std::vector<int> > get_interactions(std::vector<Node*>& forest, const Hypers& hypers);
+std::vector<std::vector<int> > get_unique_interaction(const std::vector<std::vector<std::vector<int> > > &out);
+arma::sp_umat get_counts_interaction(const std::vector<std::vector<std::vector<int> > > &out,
+                                     const std::vector<std::vector<int> > &unique_interaction);
 
 #endif

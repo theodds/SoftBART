@@ -494,49 +494,37 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
   return forest;
 }
 
-// std::vector<std::vector<std::vector<int>>> init_interaction_list(int num_tree,
-//                                                                  int num_iter) {
-//   std::vector<std::vector<std::vector<int>>> out;
-//   out.reserve(num_iter);
-//   for(int i = 0; i < num_tree; i++) {
-//     std::vector<std::vector<int>> tmp;
-//     tmp.reserve(num_tree);
+// void get_var_counts_sparse(arma::sp_mat& out, Node* node, const Hypers& hypers) {
+//   if(!node->is_leaf) {
+//     int group_idx = hypers.group(node->var);
+//     out(group_idx) = out(group_idx) + 1;
+//     get_var_counts_sparse(out, node->left, hypers);
+//     get_var_counts_sparse(out, node->right, hypers);
+//   }
+// }
+
+// arma::sp_mat get_var_counts_sparse(Node* tree, const Hypers& hypers) {
+//   sp_mat out(hypers.num_groups, 1);
+//   get_var_counts_sparse(out, tree, hypers);
+//   return out;
+// }
+
+// std::vector<std::vector<int> > get_interactions(std::vector<Node*>& forest, const Hypers& hypers) {
+//   std::vector<std::vector<int> > out;
+//   int num_tree = forest.size();
+//   out.reserve(num_tree);
+//   for(int t = 0; t < num_tree; t++) {
+//     std::vector<int> tmp;
+//     sp_mat var_counts = get_var_counts_sparse(forest[t], hypers);
+//     sp_mat::const_iterator start = var_counts.begin();
+//     sp_mat::const_iterator end   = var_counts.end();
+//     for(sp_mat::const_iterator it = start; it != end; ++it) {
+//       tmp.push_back(it.row());
+//     }
 //     out.push_back(tmp);
 //   }
 //   return out;
 // }
-
-void get_var_counts_sparse(arma::sp_mat& out, Node* node, const Hypers& hypers) {
-  if(!node->is_leaf) {
-    int group_idx = hypers.group(node->var);
-    out(group_idx) = out(group_idx) + 1;
-    get_var_counts_sparse(out, node->left, hypers);
-    get_var_counts_sparse(out, node->right, hypers);
-  }
-}
-
-arma::sp_mat get_var_counts_sparse(Node* tree, const Hypers& hypers) {
-  sp_mat out(hypers.num_groups, 1);
-  get_var_counts_sparse(out, tree, hypers);
-  return out;
-}
-
-std::vector<std::vector<int> > get_interactions(std::vector<Node*>& forest, const Hypers& hypers) {
-  std::vector<std::vector<int> > out;
-  int num_tree = forest.size();
-  out.reserve(num_tree);
-  for(int t = 0; t < num_tree; t++) {
-    std::vector<int> tmp;
-    sp_mat var_counts = get_var_counts_sparse(forest[t], hypers);
-    sp_mat::const_iterator start = var_counts.begin();
-    sp_mat::const_iterator end   = var_counts.end();
-    for(sp_mat::const_iterator it = start; it != end; ++it) {
-      tmp.push_back(it.row());
-    }
-    out.push_back(tmp);
-  }
-  return out;
-}
 
 Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
@@ -639,6 +627,12 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   }
 
+  std::vector<std::vector<int> > unique_interaction;
+  unique_interaction = get_unique_interaction(interactions);
+
+  arma::sp_umat counts_interactions(interactions.size(), unique_interaction.size() );
+  counts_interactions = get_counts_interaction(interactions, unique_interaction);
+
   Rcout << std::endl;
 
   Rcout << "Number of leaves at final iterations:\n";
@@ -669,6 +663,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["loglik"] = loglik;
   out["loglik_train"] = loglik_train;
   out["interactions"] = interactions;
+  out["unique_interactions"] = unique_interaction;
+  out["counts_interactions"] = counts_interactions;
 
 
   return out;
@@ -1917,4 +1913,122 @@ std::vector<std::vector<std::vector<double>>> test_vec() {
     out.push_back(foo);
   }
   return out;
+}
+
+// NEW MEASURE STUFF
+void get_var_counts_sparse(arma::sp_mat& out, Node* node, const Hypers& hypers) {
+  if(!node->is_leaf) {
+    int group_idx = hypers.group(node->var);
+    out(group_idx) = out(group_idx) + 1;
+    get_var_counts_sparse(out, node->left, hypers);
+    get_var_counts_sparse(out, node->right, hypers);
+  }
+}
+
+arma::sp_mat get_var_counts_sparse(Node* tree, const Hypers& hypers) {
+  sp_mat out(hypers.num_groups, 1);
+  get_var_counts_sparse(out, tree, hypers);
+  return out;
+}
+
+void get_interactions_leaves(std::vector<int> &var_leaf, Node* n){
+  if( !(n->is_root) ){
+    var_leaf.push_back(n->var);
+    get_interactions_leaves(var_leaf,n->parent);
+  }
+  else {
+    var_leaf.push_back(n->var);
+  }
+}
+
+
+std::vector<int> get_interactions_leaves(Node* n){
+  std::vector<int> out;
+  get_interactions_leaves(out, n);
+  sort( out.begin(), out.end() );
+  out.erase( unique( out.begin(), out.end() ), out.end() );
+  return out;
+}
+
+std::vector<std::vector<int> > get_interactions(std::vector<Node*>& forest, const Hypers& hypers) {
+  std::vector<std::vector<int> > out;
+  int num_tree = forest.size();
+  out.resize(0);
+  for(int t = 0; t < num_tree; t++) {
+    //std::vector<int> tmp;
+    //std::vector<int> tmp2; //new for each leave interaction
+    std::vector<Node*> ngb = not_grand_branches(forest[t]);
+    int num_leaves = ngb.size();
+    for(int k=0; k< num_leaves; k++){
+      out.push_back(get_interactions_leaves( ngb[k] ) );
+    }
+  }
+  return out;
+}
+std::vector<std::vector<int> > get_unique_interaction(const std::vector<std::vector<std::vector<int> > > &out){
+
+  std::vector<std::vector<int> >  unique_element;
+
+  // find unique pair
+  unique_element = out[0];
+
+  for(int i = 1; i < out.size(); i++) {
+    unique_element.insert(unique_element.end(), out[i].begin(),out[i].end() );
+  }
+
+  sort(unique_element.begin(),unique_element.end());
+  unique_element.erase(unique(unique_element.begin(),unique_element.end()),unique_element.end());
+
+  // find the unique interaction
+  std::vector<std::vector<int> > unique_interaction;
+  for(int j = 0; j < unique_element.size(); j++) {
+    if (unique_element[j].size() >1) {
+      unique_interaction.push_back(unique_element[j]);
+      //Rcout << unique_element[j][0] << unique_element[j][1];
+    }
+  }
+  return unique_interaction;
+}
+
+arma::sp_umat get_counts_interaction(const std::vector<std::vector<std::vector<int> > > &out,
+                                     const std::vector<std::vector<int> > &unique_interaction){
+
+  // // get the unique pair for each iteration
+  // std::vector< std::vector<std::vector<unsigned int> > > unique_tree;
+  // unique_tree.resize(out.size() );
+  // for(int k=0; k< out.size(); k++){
+  //   for(int l=0; l<out[k].size() ; l++){
+  //     if(out[k][l].size() > 1 ) {
+  //       unique_tree[k].push_back(out[k][l]);
+  //     }
+  //   }
+  // }
+  //
+  // arma::sp_umat pair_counts(unique_tree.size(), unique_interaction.size() );
+  //
+  // for (int m=0; m< unique_tree.size(); m++){
+  //   for (int n=0; n< unique_tree[m].size(); n++){
+  //     for (int o=0; o< unique_interaction.size(); o++){
+  //       if (unique_interaction[o] == unique_tree[m][n]) {
+  //         pair_counts(m,o) = 1;
+  //         break;
+  //       }
+  //     }
+  //   }
+  // }
+
+  arma::sp_umat pair_counts(out.size(), unique_interaction.size() );
+
+  for (int m=0; m< out.size(); m++){
+    for (int n=0; n< out[m].size(); n++){
+      for (int o=0; o< unique_interaction.size(); o++){
+        if (unique_interaction[o] == out[m][n]) {
+          ++pair_counts(m,o);
+          break;
+        }
+      }
+    }
+  }
+
+  return pair_counts;
 }
