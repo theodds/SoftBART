@@ -891,6 +891,31 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
 }
 
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const Hypers& hypers) {
+
+  // Randomly choose a branch
+  std::vector<Node*> bbranches = branches(tree);
+  Node* branch = rand(ngb);
+
+  // Calculuate tree likelihood before proposal
+  double ll_before = LogLT(tree, Y, X, hypers);
+
+  // Calculate product of all B - A here
+  double cutpoint_likelihood = calc_cutpoint_likelihood(tree);
+
+  // save old split
+  int old_feature = branch->var;
+  double old_value = branch->val;
+  double old_lower = branch->lower;
+  double old_upper = branch->upper;
+
+  
+
+}
+
 Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers) {
 
   // Compute loglik before
