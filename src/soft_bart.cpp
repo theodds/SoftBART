@@ -891,19 +891,59 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
 }
 
+std::vector<Node*> branches(Node* root) {
+  std::vector<Node*> branch_vec;
+  branch_vec.resize(0);
+  branches(root, branch_vec);
+  return branch_vec;
+}
+
+void branches(Node* n, std::vector<Node*> branch_vec) {
+  if(!(n->is_leaf)) {
+    branch_vec.push_back(n);
+    branches(n->left, branch_vec);
+    branches(n->right, branch_vec);
+  }
+}
+
+double calc_cutpoint_likelihood(Node* node) {
+  if(node->is_leaf) return 1;
+
+  double out = 1.0/(node->upper - node->lower);
+  double out *= calc_cutpoint_likelihood(node->left);
+  double out *= calc_cutpoint_likelihood(node->right);
+
+  return out;
+}
+
+std::vector<double> get_perturb_limits(Node* branch) {
+  int j = branch->var;
+  std::vector<double> left_a; left_a.resize(0); left_a.push_back(0.0);
+  std::vector<double> right_a; right_a.resize(0); right_a.push_back(1.0);
+  std::vector<double> left_d; left_d.resize(0); left_d.push_back(0.0);
+  std::vector<double> right_d; right_d.resize(0); left_d.push_back(1.0);
+
+  
+
+}
+
 void perturb_decision_rule(Node* tree,
                            const arma::mat& X,
                            const arma::vec& Y,
                            const Hypers& hypers) {
 
-  // Randomly choose a branch
+  // Randomly choose a branch; if no branches, we automatically reject
   std::vector<Node*> bbranches = branches(tree);
-  Node* branch = rand(ngb);
+  if(bbranches.size() == 0)
+    return;
+
+  // Select the branch
+  Node* branch = rand(bbranches);
 
   // Calculuate tree likelihood before proposal
   double ll_before = LogLT(tree, Y, X, hypers);
 
-  // Calculate product of all B - A here
+  // Calculate product of all 1/(B - A) here
   double cutpoint_likelihood = calc_cutpoint_likelihood(tree);
 
   // save old split
@@ -912,7 +952,9 @@ void perturb_decision_rule(Node* tree,
   double old_lower = branch->lower;
   double old_upper = branch->upper;
 
-  
+  // Modify the branch
+  branch->var = tree->SampleVar();
+  branch->GetLimits();
 
 }
 
