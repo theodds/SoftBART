@@ -959,11 +959,18 @@ std::vector<double> get_perturb_limits(Node* branch) {
   }
 
   std::vector<double> out; out.push_back(min); out.push_back(max);
-  
   return out;
 }
 
-
+void get_limits_below(Node* node) {
+  node->GetLimits();
+  if(!(node->left->is_leaf)) {
+    get_limits_below(node->left);
+  }
+  if(!(node->right->is_leaf)) {
+    get_limits_below(node->right);
+  }
+}
 
 void perturb_decision_rule(Node* tree,
                            const arma::mat& X,
@@ -996,9 +1003,10 @@ void perturb_decision_rule(Node* tree,
 
   // Modify the branch
   branch->var = tree->SampleVar();
-  branch->GetLimits();
+  // branch->GetLimits();
   lims = get_perturb_limits(branch);
   branch->val = lims[0] + (lims[1] - lims[0]) * unif_rand();
+  get_limits_below(branch);
 
   // Calculate likelihood after proposal
   double ll_after = LogLT(tree, Y, X, hypers);
@@ -1019,6 +1027,7 @@ void perturb_decision_rule(Node* tree,
     branch->val = old_value;
     branch->lower = old_lower;
     branch->upper = old_upper;
+    get_limits_below(branch);
   }
 }
 
