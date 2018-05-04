@@ -892,7 +892,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
 
 }
 
-void branches(Node* n, std::vector<Node*> branch_vec) {
+void branches(Node* n, std::vector<Node*>& branch_vec) {
   if(!(n->is_leaf)) {
     branch_vec.push_back(n);
     branches(n->left, branch_vec);
