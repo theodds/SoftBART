@@ -492,4 +492,15 @@ std::vector<std::vector<int> > get_unique_interaction(const std::vector<std::vec
 arma::sp_umat get_counts_interaction(const std::vector<std::vector<std::vector<int> > > &out,
                                      const std::vector<std::vector<int> > &unique_interaction);
 
+// PERTURB STUFF
+void branches(Node* n, std::vector<Node*> branch_vec);
+std::vector<Node*> branches(Node* root);
+double calc_cutpoint_likelihood(Node* node);
+std::vector<double> get_perturb_limits(Node* branch);
+
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const Hypers& hypers);
+
 #endif
