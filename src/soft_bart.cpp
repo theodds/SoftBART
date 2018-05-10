@@ -48,7 +48,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
               bool update_tau_mean, bool update_num_tree, bool split_merge,
-              double mh_bd, double mh_prior) {
+              double mh_bd, double mh_prior, bool do_interaction) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -67,6 +67,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.s_burned = false;
   out.mh_bd = mh_bd;
   out.mh_prior = mh_prior;
+  out.do_interaction = do_interaction;
 
   return out;
 
@@ -81,6 +82,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
+                  double alpha_rate,
                   double temperature, int num_clust, const arma::vec& s_0) {
 
   int GRID_SIZE = 1000;
@@ -106,6 +108,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.alpha_shape_2 = alpha_shape_2;
   out.tau_rate = tau_rate;
   out.num_tree_prob = num_tree_prob;
+  out.alpha_rate = alpha_rate;
   out.temperature = temperature;
 
   out.group = group;
@@ -538,13 +541,26 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   vec Y_hat = zeros<vec>(X.n_rows);
 
-  // double alpha_init = hypers.alpha;
+  double alpha_init = hypers.alpha;
   // Do burn_in
 
   for(int i = 0; i < opts.num_burn; i++) {
 
-    // if(i < 0.75 * opts.num_burn && i+1 >= 0.75 * opts.num_burn)
-    //   hypers.alpha = alpha_init;
+    if(i >= 0.5 * opts.num_burn
+       && i-1 < 0.5 * opts.num_burn
+       && opts.do_interaction) {
+      // Rcout << "Trying split merge\n";
+      // Rcout << "s = " << hypers.s << "\n";
+      // Rcout << "z = " << hypers.z << "\n";
+      // Rcout << "pi = " << hypers.pi << "\n";
+      // Rcout << "alpha = " << hypers.alpha << "\n";
+      hypers.alpha = alpha_init;
+      opts.s_burned = true;
+      // for(int m = 0; m < 100; m++) 
+      //   split_merge(forest, hypers);
+      // Rcout << "Done split merge\n";
+    }
+      
 
     // Don't update s for half of the burn-in
     if(i < 0.25 * opts.num_burn ) {
@@ -555,13 +571,11 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
     }
     else if(i < 0.75 * opts.num_burn) {
-      opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
       UpdateOmega(hypers);
     }
     else {
-      opts.s_burned = true;
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
       UpdatePi(forest, hypers);
       UpdateOmega(hypers);
@@ -1324,7 +1338,7 @@ void UpdateAlpha(Hypers& hypers) {
   uvec unique_z = unique(hypers.z);
   my_loglik.p = hypers.s.n_cols;
   my_loglik.k = unique_z.size();
-  my_loglik.alpha_rate = 1.0;
+  my_loglik.alpha_rate = hypers.alpha_rate;
   my_loglik.sum_log_s = 0.0;
   for(int i = 0; i < unique_z.size(); i++) {
     unsigned int z = unique_z(i);
@@ -1498,6 +1512,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double sigma_hat, double k, double alpha_scale,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
+              double alpha_rate,
               double temperature,
               const arma::vec& s_0,
               int num_clust,
@@ -1506,17 +1521,18 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
               bool update_tau, bool update_tau_mean, bool update_num_tree,
               bool split_merge, 
-              double mh_bd, double mh_prior) {
+              double mh_bd, double mh_prior, bool do_interaction) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
                        update_tau, update_tau_mean, update_num_tree,
-                       split_merge, mh_bd, mh_prior);
+                       split_merge, mh_bd, mh_prior, do_interaction);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, omega, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature, num_clust, s_0);
+                             alpha_shape_2, tau_rate, num_tree_prob,
+                             alpha_rate, temperature, num_clust, s_0);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);

@@ -20,6 +20,7 @@ struct Hypers {
   double width;
   double tau_rate;
   double num_tree_prob;
+  double alpha_rate;
   double temperature;
   int num_tree;
   int num_clust;
@@ -132,6 +133,7 @@ struct Opts {
   bool s_burned;
   double mh_bd;
   double mh_prior;
+  bool do_interaction;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
     update_beta(false), update_gamma(false), update_tau(true),
@@ -196,13 +198,14 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
               bool update_tau_mean, bool update_num_tree, bool split_merge,
-              double mh_bd, double mh_prior);
+              double mh_bd, double mh_prior, bool do_interaction);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double omega, double beta,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
+                  double alpha_rate,
                   double temperature, int num_clust, const arma::vec& s_0);
 
 void GetSuffStats(Node* n, const arma::vec& y,

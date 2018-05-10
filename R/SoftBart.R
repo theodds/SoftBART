@@ -24,6 +24,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, omega = 1, beta = 2, gamma = 0.
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
                    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
+                   alpha_rate = 10,
                    temperature = 1.0, num_clust = 5, s_0 = NULL) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
@@ -62,6 +63,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, omega = 1, beta = 2, gamma = 0.
   out$alpha_shape_2                    <- alpha_shape_2
   out$tau_rate                         <- tau_rate
   out$num_tree_prob                    <- num_tree_prob
+  out$alpha_rate                       <- alpha_rate
   out$temperature                      <- temperature
   out$num_clust                        <- num_clust
   out$omega                            <- omega
@@ -91,7 +93,8 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
                  update_tau_mean = FALSE, split_merge = FALSE,
-                 mh_bd = 0.7, mh_prior = 0.5) {
+                 mh_bd = 0.7, mh_prior = 0.5,
+                 do_interaction = FALSE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -109,6 +112,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_num_tree <- FALSE
   out$mh_bd           <- mh_bd
   out$mh_prior        <- mh_prior
+  out$do_interaction  <- do_interaction
 
   return(out)
 
@@ -194,6 +198,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$alpha_shape_2,
                   hypers$tau_rate,
                   hypers$num_tree_prob,
+                  hypers$alpha_rate,
                   hypers$temperature,
                   hypers$s_0,
                   hypers$num_clust,
@@ -210,7 +215,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_tau_mean,
                   opts$update_num_tree,
                   opts$split_merge,
-                  opts$mh_bd, opts$mh_prior
+                  opts$mh_bd, opts$mh_prior,
+                  opts$do_interaction
                   )
 
 

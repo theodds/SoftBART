@@ -25,8 +25,8 @@ rcpparma_bothproducts <- function(x) {
     .Call('_SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
 }
 
-SoftBart <- function(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, mh_bd, mh_prior) {
-    .Call('_SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, mh_bd, mh_prior)
+SoftBart <- function(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, alpha_rate, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, split_merge, mh_bd, mh_prior, do_interaction) {
+    .Call('_SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, alpha_rate, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, split_merge, mh_bd, mh_prior, do_interaction)
 }
 
 do_mh <- function(loglik_new, loglik_old, new_to_old, old_to_new) {
