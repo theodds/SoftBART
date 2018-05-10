@@ -3,6 +3,7 @@
 
 #include <RcppArmadillo.h>
 #include "functions.h"
+#include "split_merge.h"
 
 struct Hypers;
 struct Node;
@@ -127,6 +128,7 @@ struct Opts {
   bool update_tau;
   bool update_tau_mean;
   bool update_num_tree;
+  bool split_merge;
   bool s_burned;
   double mh_bd;
   double mh_prior;
@@ -193,7 +195,7 @@ class Forest {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree,
+              bool update_tau_mean, bool update_num_tree, bool split_merge,
               double mh_bd, double mh_prior);
 
 
@@ -272,9 +274,7 @@ arma::mat get_var_counts_by_cluster(std::vector<Node*>& forest,
 void get_var_counts_by_cluster(arma::mat& counts,
                                Node* node,
                                const Hypers& hypers);
-arma::vec rdirichlet(const arma::vec& shape);
 double alpha_to_rho(double alpha, double scale);
-double rlgam(double shape);
 double rho_to_alpha(double rho, double scale);
 double logpdf_beta(double x, double a, double b);
 double growth_prior(int node_depth, double gamma, double beta);
@@ -289,6 +289,11 @@ void UpdatePi(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateOmega(Hypers& hypers);
 void UpdateAlpha(Hypers& hypers);
 void UpdateAlphaShared(Hypers& hypers);
+
+// Split merge
+void split_merge(std::vector<Node*>& forest, Hypers& hypers); 
+void get_predictor(Node* node, mevec& predictor);
+arma::uvec get_open_idx(const arma::uvec& Z, int K);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,

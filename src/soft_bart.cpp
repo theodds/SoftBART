@@ -47,7 +47,7 @@ Node::Node() {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree,
+              bool update_tau_mean, bool update_num_tree, bool split_merge,
               double mh_bd, double mh_prior) {
 
   Opts out;
@@ -63,6 +63,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
   out.update_num_tree = update_num_tree;
+  out.split_merge = split_merge;
   out.s_burned = false;
   out.mh_bd = mh_bd;
   out.mh_prior = mh_prior;
@@ -685,6 +686,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
     else {
       UpdateSShared(forest, hypers);
       if(opts.update_alpha) UpdateAlphaShared(hypers);
+      if(opts.split_merge) split_merge(forest, hypers);
     }
   }
   // if(opts.update_alpha) hypers.UpdateAlpha();
@@ -1031,6 +1033,42 @@ void perturb_decision_rule(Node* tree,
   }
 }
 
+void get_predictor(Node* node, mevec& predictor) {
+  if(!node->is_leaf) {
+    predictor.push_back(node->var);
+    get_predictor(node->left, predictor);
+    get_predictor(node->right, predictor);
+  }
+}
+
+arma::uvec get_open_idx(const arma::uvec& Z, int K) {
+  uvec counts = zeros<uvec>(K);
+  for(int i = 0; i < Z.size(); i++) {
+    counts(Z(i)) = counts(Z(i)) + 1;
+  }
+  return find(counts == 0);
+}
+
+void split_merge(std::vector<Node*>& forest, Hypers& hypers) {
+
+  memat predictor_by_tree;
+  for(int t = 0; t < forest.size(); t++) {
+    mevec predictor;
+    get_predictor(forest[t], predictor);
+    predictor_by_tree.push_back(predictor);
+  }
+
+  uvec open_idx = get_open_idx(hypers.z, hypers.num_clust);
+  uvec Z_up = SplitMergeCpp(predictor_by_tree, hypers.z, hypers.num_clust,
+                            open_idx, hypers.alpha / hypers.num_groups,
+                            hypers.omega, hypers.num_groups, 20);
+
+  hypers.z = Z_up;
+  UpdatePi(forest, hypers);
+  UpdateSShared(forest, hypers);
+
+}
+
 Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers) {
 
   // Compute loglik before
@@ -1257,44 +1295,6 @@ void UpdateOmega(Hypers& hypers) {
 
 // }
 
-// [[Rcpp::export]]
-double rlgam(double shape) {
-  if(shape >= 0.1) return log(Rf_rgamma(shape, 1.0));
-
-  double a = shape;
-  double L = 1.0/a- 1.0;
-  double w = exp(-1.0) * a / (1.0 - a);
-  double ww = 1.0 / (1.0 + w);
-  double z = 0.0;
-  do {
-    double U = unif_rand();
-    if(U <= ww) {
-      z = -log(U / ww);
-    }
-    else {
-      z = log(unif_rand()) / L;
-    }
-    double eta = z >= 0 ? -z : log(w)  + log(L) + L * z;
-    double h = -z - exp(-z / a);
-    if(h - eta > log(unif_rand())) break;
-  } while(true);
-
-  // Rcout << "Sample: " << -z/a << "\n";
-
-  return -z/a;
-}
-
-arma::vec rdirichlet(const arma::vec& shape) {
-  vec out = zeros<vec>(shape.size());
-  for(int i = 0; i < shape.size(); i++) {
-    do {
-      out(i) = Rf_rgamma(shape(i), 1.0);
-    } while(out(i) == 0);
-  }
-  out = out / sum(out);
-  return out;
-}
-
 double alpha_to_rho(double alpha, double scale) {
   return alpha / (alpha + scale);
 }
@@ -1505,12 +1505,14 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
               bool update_tau, bool update_tau_mean, bool update_num_tree,
+              bool split_merge, 
               double mh_bd, double mh_prior) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean, update_num_tree, mh_bd, mh_prior);
+                       update_tau, update_tau_mean, update_num_tree,
+                       split_merge, mh_bd, mh_prior);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, omega, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
