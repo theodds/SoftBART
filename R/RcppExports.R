@@ -37,3 +37,7 @@ test_vec <- function() {
     .Call('_SoftBart_test_vec', PACKAGE = 'SoftBart')
 }
 
+DrawFromPrior <- function(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, alpha_rate, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, split_merge, mh_bd, mh_prior, do_interaction, pi, z, s) {
+    .Call('_SoftBart_DrawFromPrior', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, alpha_rate, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, split_merge, mh_bd, mh_prior, do_interaction, pi, z, s)
+}
+

@@ -225,7 +225,7 @@ void Node::BirthLeaves(const Hypers& hypers) {
 }
 
 void Node::GenTree(const Hypers& hypers) {
-  Root(hypers,1);
+  Root(hypers,hypers.z(tree_number));
   GenBelow(hypers);
 }
 
@@ -2190,3 +2190,67 @@ arma::sp_umat get_counts_interaction(const std::vector<std::vector<std::vector<i
 
   return pair_counts;
 }
+
+/* Draw from prior experiment ************************************************/
+
+// [[Rcpp::export]]
+List DrawFromPrior(const arma::mat& X,
+                   const arma::vec& Y,
+                   const arma::mat& X_test,
+                   const arma::uvec& group,
+                   double alpha,
+                   double omega,
+                   double beta, double gamma, double sigma,
+                   double shape, double width, int num_tree,
+                   double sigma_hat, double k, double alpha_scale,
+                   double alpha_shape_1, double alpha_shape_2, double tau_rate,
+                   double num_tree_prob,
+                   double alpha_rate,
+                   double temperature,
+                   const arma::vec& s_0,
+                   int num_clust,
+                   int num_burn,
+                   int num_thin, int num_save, int num_print, bool update_sigma_mu,
+                   bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
+                   bool update_tau, bool update_tau_mean, bool update_num_tree,
+                   bool split_merge, 
+                   double mh_bd, double mh_prior, bool do_interaction,
+                   arma::vec& pi,
+                   arma::uvec& z,
+                   arma::mat& s) {
+
+
+
+  Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
+                       update_s, update_alpha, update_beta, update_gamma,
+                       update_tau, update_tau_mean, update_num_tree,
+                       split_merge, mh_bd, mh_prior, do_interaction);
+
+  Hypers hypers = InitHypers(X, group, sigma_hat, alpha, omega, beta, gamma, k, width,
+                             shape, num_tree, alpha_scale, alpha_shape_1,
+                             alpha_shape_2, tau_rate, num_tree_prob,
+                             alpha_rate, temperature, num_clust, s_0);
+  
+
+  hypers.pi = pi;
+  hypers.z = z-1;
+  hypers.s_0 = s_0;
+  hypers.s = s;
+
+  std::vector<Node*> forest = init_forest(X,Y,hypers);
+  for(int i = 0; i < forest.size(); i++) {
+    forest[i]->GenTree(hypers);
+  }
+
+  arma::uvec var_counts = get_var_counts(forest, hypers);
+  std::vector<std::vector<int>> interactions = get_interactions(forest, hypers);
+
+  List out;
+  out["var_counts"] = var_counts;
+  out["interactions"] = interactions;
+
+  return out;
+
+}
+
+

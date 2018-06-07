@@ -145,6 +145,58 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// DrawFromPrior
+List DrawFromPrior(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double omega, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, double num_tree_prob, double alpha_rate, double temperature, const arma::vec& s_0, int num_clust, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, bool update_num_tree, bool split_merge, double mh_bd, double mh_prior, bool do_interaction, arma::vec& pi, arma::uvec& z, arma::mat& s);
+RcppExport SEXP _SoftBart_DrawFromPrior(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP omegaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP alpha_rateSEXP, SEXP temperatureSEXP, SEXP s_0SEXP, SEXP num_clustSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP, SEXP split_mergeSEXP, SEXP mh_bdSEXP, SEXP mh_priorSEXP, SEXP do_interactionSEXP, SEXP piSEXP, SEXP zSEXP, SEXP sSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X_test(X_testSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type omega(omegaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< double >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type shape(shapeSEXP);
+    Rcpp::traits::input_parameter< double >::type width(widthSEXP);
+    Rcpp::traits::input_parameter< int >::type num_tree(num_treeSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma_hat(sigma_hatSEXP);
+    Rcpp::traits::input_parameter< double >::type k(kSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_scale(alpha_scaleSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_shape_1(alpha_shape_1SEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_shape_2(alpha_shape_2SEXP);
+    Rcpp::traits::input_parameter< double >::type tau_rate(tau_rateSEXP);
+    Rcpp::traits::input_parameter< double >::type num_tree_prob(num_tree_probSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha_rate(alpha_rateSEXP);
+    Rcpp::traits::input_parameter< double >::type temperature(temperatureSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type s_0(s_0SEXP);
+    Rcpp::traits::input_parameter< int >::type num_clust(num_clustSEXP);
+    Rcpp::traits::input_parameter< int >::type num_burn(num_burnSEXP);
+    Rcpp::traits::input_parameter< int >::type num_thin(num_thinSEXP);
+    Rcpp::traits::input_parameter< int >::type num_save(num_saveSEXP);
+    Rcpp::traits::input_parameter< int >::type num_print(num_printSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_sigma_mu(update_sigma_muSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_s(update_sSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_alpha(update_alphaSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_beta(update_betaSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_gamma(update_gammaSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_tau(update_tauSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_tau_mean(update_tau_meanSEXP);
+    Rcpp::traits::input_parameter< bool >::type update_num_tree(update_num_treeSEXP);
+    Rcpp::traits::input_parameter< bool >::type split_merge(split_mergeSEXP);
+    Rcpp::traits::input_parameter< double >::type mh_bd(mh_bdSEXP);
+    Rcpp::traits::input_parameter< double >::type mh_prior(mh_priorSEXP);
+    Rcpp::traits::input_parameter< bool >::type do_interaction(do_interactionSEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type pi(piSEXP);
+    Rcpp::traits::input_parameter< arma::uvec& >::type z(zSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type s(sSEXP);
+    rcpp_result_gen = Rcpp::wrap(DrawFromPrior(X, Y, X_test, group, alpha, omega, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, alpha_rate, temperature, s_0, num_clust, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, split_merge, mh_bd, mh_prior, do_interaction, pi, z, s));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_mod_forest();
 
@@ -158,6 +210,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 39},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},
     {"_SoftBart_test_vec", (DL_FUNC) &_SoftBart_test_vec, 0},
+    {"_SoftBart_DrawFromPrior", (DL_FUNC) &_SoftBart_DrawFromPrior, 42},
     {"_rcpp_module_boot_mod_forest", (DL_FUNC) &_rcpp_module_boot_mod_forest, 0},
     {NULL, NULL, 0}
 };
