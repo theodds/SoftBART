@@ -83,6 +83,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_groups = group.max() + 1;
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
+  out.logZ = out.logs;
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -502,6 +503,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
   mat s = zeros<mat>(opts.num_save, hypers.s.size());
+  mat logZ = zeros<mat>(opts.num_save, hypers.s.size());
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
   vec tau_rate = zeros<vec>(opts.num_save);
   uvec num_tree = zeros<uvec>(opts.num_save);
@@ -520,6 +522,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     sigma(i) = hypers.sigma;
     sigma_mu(i) = hypers.sigma_mu;
     s.row(i) = trans(hypers.s);
+    logZ.row(i) = trans(hypers.logZ);
     var_counts.row(i) = trans(get_var_counts(forest, hypers));
     alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
@@ -548,6 +551,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["sigma"] = sigma;
   out["sigma_mu"] = sigma_mu;
   out["s"] = s;
+  out["logZ"] = logZ;
   out["alpha"] = alpha;
   out["beta"] = beta;
   out["gamma"] = gamma;
@@ -840,11 +844,12 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   // Sample unnormalized s on the log scale
   for(int i = 0; i < shape_up.size(); i++) {
-    hypers.logs(i) = rlgam(shape_up(i));
+    hypers.logZ(i) = rlgam(shape_up(i));
   }
   // Normalize s on the log scale, then exponentiate
-  hypers.logs = hypers.logs - log_sum_exp(hypers.logs);
+  hypers.logs = hypers.logZ - log_sum_exp(hypers.logZ);
   hypers.s = exp(hypers.logs);
+  hypers.logZ = hypers.logs + rlgam(hypers.alpha);
 
 }
 
@@ -899,22 +904,59 @@ double logpdf_beta(double x, double a, double b) {
 }
 
 void Hypers::UpdateAlpha() {
-  arma::vec logliks = zeros<vec>(rho_propose.size());
 
-  rho_loglik loglik;
-  loglik.mean_log_s = mean(logs);
-  loglik.p = (double)s.size();
-  loglik.alpha_scale = alpha_scale;
-  loglik.alpha_shape_1 = alpha_shape_1;
-  loglik.alpha_shape_2 = alpha_shape_2;
+  // arma::vec logliks = zeros<vec>(rho_propose.size());
 
-  for(int i = 0; i < rho_propose.size(); i++) {
-    logliks(i) = loglik(rho_propose(i));
+  // Get the Gamma approximation
+  double n = logZ.size();
+  double R = sum(logZ);
+  double alpha_hat = exp(log_sum_exp(logZ)) / n;
+  double a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+  double b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+  int M = 10;
+  for(int i = 0; i < M; i++) {
+    alpha_hat = a_hat / b_hat;
+    double a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+    double b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+  }
+  a_hat = a_hat / 1.3;
+  b_hat = b_hat / 1.3;
+
+  // Sample from the gamma approximation
+  double alpha_prop = R::rgamma(a_hat, n / b_hat);
+
+
+  // Compute logliks
+  double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop / n * R +
+    R::dgamma(alpha_prop, alpha_shape_1, alpha_scale, 1) + 
+    // alpha_shape_1 * log(alpha_prop)
+    // - (alpha_shape_1 + alpha_shape_2) * log(alpha_prop + alpha_scale) +
+    R::dgamma(alpha, a_hat, n / b_hat, 1);
+  double loglik_old = -n * R::lgammafn(alpha / n) + alpha / n * R +
+    R::dgamma(alpha, alpha_shape_1, alpha_scale, 1) + 
+    // alpha_shape_1 * log(alpha)
+    // - (alpha_shape_1 + alpha_shape_2) * log(alpha + alpha_scale) +
+    R::dgamma(alpha_prop, a_hat, n / b_hat, 1);
+
+  // Accept or reject
+  if(log(unif_rand()) < loglik_new - loglik_old) {
+    alpha = alpha_prop;
   }
 
-  logliks = exp(logliks - log_sum_exp(logliks));
-  double rho_up = rho_propose(sample_class(logliks));
-  alpha = rho_to_alpha(rho_up, alpha_scale);
+  // rho_loglik loglik;
+  // loglik.mean_log_s = mean(logs);
+  // loglik.p = (double)s.size();
+  // loglik.alpha_scale = alpha_scale;
+  // loglik.alpha_shape_1 = alpha_shape_1;
+  // loglik.alpha_shape_2 = alpha_shape_2;
+
+  // for(int i = 0; i < rho_propose.size(); i++) {
+  //   logliks(i) = loglik(rho_propose(i));
+  // }
+
+  // logliks = exp(logliks - log_sum_exp(logliks));
+  // double rho_up = rho_propose(sample_class(logliks));
+  // alpha = rho_to_alpha(rho_up, alpha_scale);
 
 }
 
@@ -1149,6 +1191,7 @@ Hypers::Hypers(Rcpp::List hypers) {
 
   s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
   logs = log(s);
+  logZ = logs;
 
   group_to_vars.resize(s.size());
   for(int i = 0; i < s.size(); i++) {
@@ -1543,6 +1586,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 void Forest::set_s(const arma::vec& s_) {
   hypers.s = s_;
   hypers.logs = log(s_);
+  hypers.logZ = hypers.logs;
 }
 
 arma::uvec Forest::get_counts() {

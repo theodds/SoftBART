@@ -23,6 +23,7 @@ struct Hypers {
   int num_groups;
   arma::vec s;
   arma::vec logs;
+  arma::vec logZ;
   arma::uvec group;
 
   arma::vec rho_propose;
