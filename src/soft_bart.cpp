@@ -905,7 +905,6 @@ double logpdf_beta(double x, double a, double b) {
 
 void Hypers::UpdateAlpha() {
 
-  // arma::vec logliks = zeros<vec>(rho_propose.size());
 
   // Get the Gamma approximation
   double n = logZ.size();
@@ -943,6 +942,7 @@ void Hypers::UpdateAlpha() {
     alpha = alpha_prop;
   }
 
+  // arma::vec logliks = zeros<vec>(rho_propose.size());
   // rho_loglik loglik;
   // loglik.mean_log_s = mean(logs);
   // loglik.p = (double)s.size();
