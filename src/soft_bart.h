@@ -36,6 +36,9 @@ struct Hypers {
   double alpha_shape_1;
   double alpha_shape_2;
 
+  double a_hat = 0.0;
+  double b_hat = 0.0;
+
   void UpdateSigma(const arma::vec& r);
   void UpdateSigmaMu(const arma::vec& means);
   void UpdateAlpha();

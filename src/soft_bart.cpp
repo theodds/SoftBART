@@ -907,35 +907,51 @@ void Hypers::UpdateAlpha() {
 
 
   // Get the Gamma approximation
+
   double n = logZ.size();
-  double R = sum(logZ);
-  double alpha_hat = exp(log_sum_exp(logZ)) / n;
-  double a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-  double b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
-  int M = 10;
+  double R = mean(logZ);
+  double alpha_hat = exp(log_sum_exp(logZ));
+  a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
+  b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
+    Rf_digamma(alpha_hat / n) - R;
+  int M + 10;
   for(int i = 0; i < M; i++) {
     alpha_hat = a_hat / b_hat;
-    double a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-    double b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+    a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
+    b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
   }
-  a_hat = a_hat / 1.3;
-  b_hat = b_hat / 1.3;
+  double A = a_hat * .75;
+  double B = b_hat * .75;
+
+  // double n = logZ.size();
+  // double R = sum(logZ);
+  // double alpha_hat = exp(log_sum_exp(logZ)) / n;
+  // a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+  // b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+  // int M = 10;
+  // for(int i = 0; i < M; i++) {
+  //   alpha_hat = a_hat / b_hat;
+  //   a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+  //   b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+  // }
+  // a_hat = a_hat / 1.3;
+  // b_hat = b_hat / 1.3;
 
   // Sample from the gamma approximation
-  double alpha_prop = R::rgamma(a_hat, n / b_hat);
+  double alpha_prop = R::rgamma(A, 1.0 / B);
 
 
   // Compute logliks
   double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop / n * R +
-    R::dgamma(alpha_prop, alpha_shape_1, alpha_scale, 1) + 
+    R::dgamma(alpha_prop, alpha_shape_1, alpha_scale, 1) +
     // alpha_shape_1 * log(alpha_prop)
     // - (alpha_shape_1 + alpha_shape_2) * log(alpha_prop + alpha_scale) +
-    R::dgamma(alpha, a_hat, n / b_hat, 1);
+    R::dgamma(alpha, A, 1.0 / B, 1);
   double loglik_old = -n * R::lgammafn(alpha / n) + alpha / n * R +
-    R::dgamma(alpha, alpha_shape_1, alpha_scale, 1) + 
+    R::dgamma(alpha, alpha_shape_1, alpha_scale, 1) +
     // alpha_shape_1 * log(alpha)
     // - (alpha_shape_1 + alpha_shape_2) * log(alpha + alpha_scale) +
-    R::dgamma(alpha_prop, a_hat, n / b_hat, 1);
+    R::dgamma(alpha_prop, A, 1.0 / B, 1);
 
   // Accept or reject
   if(log(unif_rand()) < loglik_new - loglik_old) {
