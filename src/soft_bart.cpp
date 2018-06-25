@@ -503,7 +503,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
   mat s = zeros<mat>(opts.num_save, hypers.s.size());
-  mat logZ = zeros<mat>(opts.num_save, hypers.s.size());
+  // mat logZ = zeros<mat>(opts.num_save, hypers.s.size());
+  vec a_hat = zeros<vec>(opts.num_save);
+  vec b_hat = zeros<vec>(opts.num_save);
+  double mean_log_Z = zeros<vec>(opts.num_save);
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
   vec tau_rate = zeros<vec>(opts.num_save);
   uvec num_tree = zeros<uvec>(opts.num_save);
@@ -522,7 +525,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     sigma(i) = hypers.sigma;
     sigma_mu(i) = hypers.sigma_mu;
     s.row(i) = trans(hypers.s);
-    logZ.row(i) = trans(hypers.logZ);
+    // logZ.row(i) = trans(hypers.logZ);
+    a_hat(i) = hypers.a_hat;
+    b_hat(i) = hypers.b_hat;
+    mean_log_Z(i) = hypers.mean_log_Z;
     var_counts.row(i) = trans(get_var_counts(forest, hypers));
     alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
@@ -551,7 +557,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["sigma"] = sigma;
   out["sigma_mu"] = sigma_mu;
   out["s"] = s;
-  out["logZ"] = logZ;
+  // out["logZ"] = logZ;
+  out["a_hat"] = a_hat;
+  out["b_hat"] = b_hat;
+  out["mean_log_Z"] = mean_log_Z;
   out["alpha"] = alpha;
   out["beta"] = beta;
   out["gamma"] = gamma;
@@ -903,13 +912,14 @@ double logpdf_beta(double x, double a, double b) {
   return (a-1.0) * log(x) + (b-1.0) * log(1 - x) - Rf_lbeta(a,b);
 }
 
+// NOTE: the log-likelihood here is -n Gam(alpha/n) + alpha * mean_log_Z + (shape - 1) * log(alpha) - rate * alpha
 void Hypers::UpdateAlpha() {
 
 
   // Get the Gamma approximation
 
   double n = logZ.size();
-  double R = mean(logZ);
+  double R = mean(logZ); mean_log_Z = R;
   double alpha_hat = exp(log_sum_exp(logZ));
   a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
   b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
