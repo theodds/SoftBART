@@ -953,15 +953,11 @@ void Hypers::UpdateAlpha() {
 
 
   // Compute logliks
-  double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop / n * R +
-    R::dgamma(alpha_prop, alpha_shape_1, alpha_scale, 1) +
-    // alpha_shape_1 * log(alpha_prop)
-    // - (alpha_shape_1 + alpha_shape_2) * log(alpha_prop + alpha_scale) +
+  double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop * R +
+    (alpha_shape_1 - 1.0) * log(alpha_prop) - alpha_prop / alpha_scale +
     R::dgamma(alpha, A, 1.0 / B, 1);
-  double loglik_old = -n * R::lgammafn(alpha / n) + alpha / n * R +
-    R::dgamma(alpha, alpha_shape_1, alpha_scale, 1) +
-    // alpha_shape_1 * log(alpha)
-    // - (alpha_shape_1 + alpha_shape_2) * log(alpha + alpha_scale) +
+  double loglik_old = -n * R::lgammafn(alpha / n) + alpha * R +
+    (alpha_shape_1 - 1.0) * log(alpha) - alpha / alpha_scale +
     R::dgamma(alpha_prop, A, 1.0 / B, 1);
 
   // Accept or reject
