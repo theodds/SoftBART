@@ -506,7 +506,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   // mat logZ = zeros<mat>(opts.num_save, hypers.s.size());
   vec a_hat = zeros<vec>(opts.num_save);
   vec b_hat = zeros<vec>(opts.num_save);
-  double mean_log_Z = zeros<vec>(opts.num_save);
+  vec mean_log_Z = zeros<vec>(opts.num_save);
   umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
   vec tau_rate = zeros<vec>(opts.num_save);
   uvec num_tree = zeros<uvec>(opts.num_save);
@@ -924,11 +924,12 @@ void Hypers::UpdateAlpha() {
   a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
   b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
     Rf_digamma(alpha_hat / n) - R;
-  int M + 10;
+  int M = 10;
   for(int i = 0; i < M; i++) {
     alpha_hat = a_hat / b_hat;
     a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
     b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
+      Rf_digamma(alpha_hat / n) - R;
   }
   double A = a_hat * .75;
   double B = b_hat * .75;
