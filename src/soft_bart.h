@@ -5,6 +5,8 @@
 #include "functions.h"
 #include "split_merge.h"
 
+// [[Rcpp::depends(RcppArmadillo)]]
+
 struct Hypers;
 struct Node;
 
