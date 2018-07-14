@@ -245,6 +245,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
                 const Hypers& hypers);
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
                           const Hypers& hypers);
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
 double probability_node_birth(Node* tree);
@@ -401,5 +402,15 @@ double slice_sampler(double x0, rho_loglik& g, double w,
 
 }
 
+// PERTURB STUFF
+void branches(Node* n, std::vector<Node*>& branch_vec);
+std::vector<Node*> branches(Node* root);
+double calc_cutpoint_likelihood(Node* node);
+std::vector<double> get_perturb_limits(Node* branch);
+
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const Hypers& hypers);
 
 #endif
