@@ -9,6 +9,14 @@ choll <- function(Sigma) {
     .Call('_SoftBart_choll', PACKAGE = 'SoftBart', Sigma)
 }
 
+fit_logistic <- function(X, Y, num_iter) {
+    .Call('_SoftBart_fit_logistic', PACKAGE = 'SoftBart', X, Y, num_iter)
+}
+
+fit_copula <- function(counts, sigma, num_iter) {
+    .Call('_SoftBart_fit_copula', PACKAGE = 'SoftBart', counts, sigma, num_iter)
+}
+
 rcpparma_hello_world <- function() {
     .Call('_SoftBart_rcpparma_hello_world', PACKAGE = 'SoftBart')
 }

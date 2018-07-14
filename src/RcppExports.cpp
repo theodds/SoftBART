@@ -29,6 +29,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fit_logistic
+arma::mat fit_logistic(const arma::mat& X, const arma::vec& Y, int num_iter);
+RcppExport SEXP _SoftBart_fit_logistic(SEXP XSEXP, SEXP YSEXP, SEXP num_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< int >::type num_iter(num_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(fit_logistic(X, Y, num_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// fit_copula
+arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter);
+RcppExport SEXP _SoftBart_fit_copula(SEXP countsSEXP, SEXP sigmaSEXP, SEXP num_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< int >::type num_iter(num_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(fit_copula(counts, sigma, num_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpparma_hello_world
 arma::mat rcpparma_hello_world();
 RcppExport SEXP _SoftBart_rcpparma_hello_world() {
@@ -144,6 +170,8 @@ RcppExport SEXP _rcpp_module_boot_mod_forest();
 static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rmvnorm", (DL_FUNC) &_SoftBart_rmvnorm, 2},
     {"_SoftBart_choll", (DL_FUNC) &_SoftBart_choll, 1},
+    {"_SoftBart_fit_logistic", (DL_FUNC) &_SoftBart_fit_logistic, 3},
+    {"_SoftBart_fit_copula", (DL_FUNC) &_SoftBart_fit_copula, 3},
     {"_SoftBart_rcpparma_hello_world", (DL_FUNC) &_SoftBart_rcpparma_hello_world, 0},
     {"_SoftBart_rcpparma_outerproduct", (DL_FUNC) &_SoftBart_rcpparma_outerproduct, 1},
     {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
