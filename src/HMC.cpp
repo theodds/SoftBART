@@ -195,13 +195,13 @@ arma::mat fit_logistic(const arma::mat& X, const arma::vec& Y, int num_iter) {
 }
 
 // [[Rcpp::export]]
-arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter) {
+arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter, int num_leap) {
   int P = counts.size();
   vec zeta_0 = zeros<vec>(P);
   mat out = zeros<mat>(num_iter, P);
 
   Rcout << "Init the sampler\n";
-  HMCExpCopula* sampler = new HMCExpCopula(counts, sigma, 1.0, 10, num_iter/2);
+  HMCExpCopula* sampler = new HMCExpCopula(counts, sigma, 1.0, num_leap, num_iter/2);
 
   Rcout << "Find reasonable epsilon" << "\n";
   sampler->find_reasonable_epsilon(zeta_0);

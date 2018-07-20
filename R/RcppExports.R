@@ -13,8 +13,8 @@ fit_logistic <- function(X, Y, num_iter) {
     .Call('_SoftBart_fit_logistic', PACKAGE = 'SoftBart', X, Y, num_iter)
 }
 
-fit_copula <- function(counts, sigma, num_iter) {
-    .Call('_SoftBart_fit_copula', PACKAGE = 'SoftBart', counts, sigma, num_iter)
+fit_copula <- function(counts, sigma, num_iter, num_leap) {
+    .Call('_SoftBart_fit_copula', PACKAGE = 'SoftBart', counts, sigma, num_iter, num_leap)
 }
 
 rcpparma_hello_world <- function() {
