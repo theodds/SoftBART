@@ -1,4 +1,8 @@
+#ifndef HMC_H
+#define HMC_H
+
 #include <RcppArmadillo.h>
+#include "functions.h"
 
 // This is a simple example of exporting a C++ function to R. You can
 // source this function into an R session using the Rcpp::sourceCpp
@@ -88,23 +92,27 @@ struct HMCLogitNormal : HMCSampler {
   arma::vec calc_gradient(const arma::vec& zetaeta);
 
   arma::uvec counts;
-  const arma::uvec  i_vec;
-  const arma::uvec  j_vec;
+  arma::uvec  i_vec;
+  arma::uvec  j_vec;
   double tau;
-  double a = 4.0;
-  double b = 1.0;
+  double a;
+  double b;
 
-  HMCLogitNormal(const arma::uvec& countss,
+  HMCLogitNormal(arma::uvec& countss,
                  double tauu,
                  const arma::uvec& i_vecc,
                  const arma::uvec& j_vecc,
                  double eps,
                  int leap,
-                 int num_adapt) : HMCLogitNormal(eps, leap, num_adapt) {
+                 int num_adapt) : HMCSampler(eps, leap, num_adapt) {
     counts = countss;
     i_vec = i_vecc;
     j_vec = j_vecc;
     tau = tauu;
+    a = 4.0;
+    b = 1.0;
   }
 
 };
+
+#endif

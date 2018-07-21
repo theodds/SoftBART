@@ -139,10 +139,17 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item gamma: posterior samples of gamma
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
 #' }
-softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
+softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL) {
 
   if(is.null(hypers)){
     hypers <- Hypers(X,Y)
+  }
+
+  ## If graph not provided, compute graph
+  if(is.null(my_graph)) {
+    huge_graph <- huge(X)
+    huge_select <- huge.select(huge_grpah)
+    my_graph <- summary(huge_select$refit)
   }
 
   ## Normalize Y
@@ -183,6 +190,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$tau_rate,
                   hypers$num_tree_prob,
                   hypers$temperature,
+                  my_graph$i,
+                  my_graph$j,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,

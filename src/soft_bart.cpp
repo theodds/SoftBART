@@ -119,7 +119,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   double epsilon = 1.0;
   int num_leap = 20;
   int num_adapt = 2500;
-  vec counts = zeros<vec>(num_groups);
+  uvec counts = zeros<uvec>(out.num_groups);
   out.zeta_eta_sampler = new HMCLogitNormal(counts, out.tau, i_vec, j_vec,
                                             epsilon, num_leap, num_adapt);
 
@@ -1027,21 +1027,21 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
   int P = hypers.num_groups;
   vec zetaeta = zeros<vec>(P + 1);
   for(int j = 0; j < P; j++) {
-    zetaeta(j) = zeta(j);
+    zetaeta(j) = hypers.zeta(j);
   }
-  zetaeta(P) = eta;
+  zetaeta(P) = hypers.eta;
 
   // Set up sampler
-  zeta_eta_sampler->counts = get_var_counts(forest,hypers);
-  if(zeta_eta_sampler->num_iter == 0) zeta_eta_sampler->find_reasonable_epsilon(zetaeta);
+  hypers.zeta_eta_sampler->counts = get_var_counts(forest,hypers);
+  if(hypers.zeta_eta_sampler->num_iter == 0) hypers.zeta_eta_sampler->find_reasonable_epsilon(zetaeta);
 
-  zetaeta = zeta_eta_sampler->do_hmc_iteration_dual(zetaeta);
-  zeta = zetaeta.rows(0,P-1);
-  eta = zetaeta(P);
-  nu = exp(eta);
-  vec Z = nu * zeta;
-  logs = Z - log_sum_exp(Z);
-  s = exp(logs);
+  zetaeta = hypers.zeta_eta_sampler->do_hmc_iteration_dual(zetaeta);
+  hypers.zeta = zetaeta.rows(0,P-1);
+  hypers.eta = zetaeta(P);
+  hypers.nu = exp(hypers.eta);
+  vec Z = hypers.nu * hypers.zeta;
+  hypers.logs = Z - log_sum_exp(Z);
+  hypers.s = exp(hypers.logs);
 
   // Get shape vector
   // vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
@@ -1113,69 +1113,69 @@ void Hypers::UpdateAlpha() {
 
 
   // Get the Gamma approximation
-
-  double n = logZ.size();
-  double R = mean(logZ); mean_log_Z = R;
-  double alpha_hat = exp(log_sum_exp(logZ));
-  a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
-  b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
-    Rf_digamma(alpha_hat / n) - R;
-  int M = 10;
-  for(int i = 0; i < M; i++) {
-    alpha_hat = a_hat / b_hat;
-    a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
-    b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
-      Rf_digamma(alpha_hat / n) - R;
-  }
-  double A = a_hat * .75;
-  double B = b_hat * .75;
-
-  // double n = logZ.size();
-  // double R = sum(logZ);
-  // double alpha_hat = exp(log_sum_exp(logZ)) / n;
-  // a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-  // b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
-  // int M = 10;
-  // for(int i = 0; i < M; i++) {
-  //   alpha_hat = a_hat / b_hat;
-  //   a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-  //   b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
-  // }
-  // a_hat = a_hat / 1.3;
-  // b_hat = b_hat / 1.3;
-
-  // Sample from the gamma approximation
-  double alpha_prop = R::rgamma(A, 1.0 / B);
-
-
-  // Compute logliks
-  double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop * R +
-    (alpha_shape_1 - 1.0) * log(alpha_prop) - alpha_prop / alpha_scale +
-    R::dgamma(alpha, A, 1.0 / B, 1);
-  double loglik_old = -n * R::lgammafn(alpha / n) + alpha * R +
-    (alpha_shape_1 - 1.0) * log(alpha) - alpha / alpha_scale +
-    R::dgamma(alpha_prop, A, 1.0 / B, 1);
-
-  // Accept or reject
-  if(log(unif_rand()) < loglik_new - loglik_old) {
-    alpha = alpha_prop;
-  }
-
-  // arma::vec logliks = zeros<vec>(rho_propose.size());
-  // rho_loglik loglik;
-  // loglik.mean_log_s = mean(logs);
-  // loglik.p = (double)s.size();
-  // loglik.alpha_scale = alpha_scale;
-  // loglik.alpha_shape_1 = alpha_shape_1;
-  // loglik.alpha_shape_2 = alpha_shape_2;
-
-  // for(int i = 0; i < rho_propose.size(); i++) {
-  //   logliks(i) = loglik(rho_propose(i));
-  // }
-
-  // logliks = exp(logliks - log_sum_exp(logliks));
-  // double rho_up = rho_propose(sample_class(logliks));
-  // alpha = rho_to_alpha(rho_up, alpha_scale);
+// 
+//   double n = logZ.size();
+//   double R = mean(logZ); mean_log_Z = R;
+//   double alpha_hat = exp(log_sum_exp(logZ));
+//   a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
+//   b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
+//     Rf_digamma(alpha_hat / n) - R;
+//   int M = 10;
+//   for(int i = 0; i < M; i++) {
+//     alpha_hat = a_hat / b_hat;
+//     a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
+//     b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
+//       Rf_digamma(alpha_hat / n) - R;
+//   }
+//   double A = a_hat * .75;
+//   double B = b_hat * .75;
+// 
+//   // double n = logZ.size();
+//   // double R = sum(logZ);
+//   // double alpha_hat = exp(log_sum_exp(logZ)) / n;
+//   // a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+//   // b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+//   // int M = 10;
+//   // for(int i = 0; i < M; i++) {
+//   //   alpha_hat = a_hat / b_hat;
+//   //   a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
+//   //   b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
+//   // }
+//   // a_hat = a_hat / 1.3;
+//   // b_hat = b_hat / 1.3;
+// 
+//   // Sample from the gamma approximation
+//   double alpha_prop = R::rgamma(A, 1.0 / B);
+// 
+// 
+//   // Compute logliks
+//   double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop * R +
+//     (alpha_shape_1 - 1.0) * log(alpha_prop) - alpha_prop / alpha_scale +
+//     R::dgamma(alpha, A, 1.0 / B, 1);
+//   double loglik_old = -n * R::lgammafn(alpha / n) + alpha * R +
+//     (alpha_shape_1 - 1.0) * log(alpha) - alpha / alpha_scale +
+//     R::dgamma(alpha_prop, A, 1.0 / B, 1);
+// 
+//   // Accept or reject
+//   if(log(unif_rand()) < loglik_new - loglik_old) {
+//     alpha = alpha_prop;
+//   }
+// 
+//   // arma::vec logliks = zeros<vec>(rho_propose.size());
+//   // rho_loglik loglik;
+//   // loglik.mean_log_s = mean(logs);
+//   // loglik.p = (double)s.size();
+//   // loglik.alpha_scale = alpha_scale;
+//   // loglik.alpha_shape_1 = alpha_shape_1;
+//   // loglik.alpha_shape_2 = alpha_shape_2;
+// 
+//   // for(int i = 0; i < rho_propose.size(); i++) {
+//   //   logliks(i) = loglik(rho_propose(i));
+//   // }
+// 
+//   // logliks = exp(logliks - log_sum_exp(logliks));
+//   // double rho_up = rho_propose(sample_class(logliks));
+//   // alpha = rho_to_alpha(rho_up, alpha_scale);
 
 }
 
@@ -1305,6 +1305,8 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
               double temperature,
+              const arma::uvec& i_vec,
+              const arma::uvec& j_vec,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
@@ -1317,7 +1319,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature);
+                             alpha_shape_2, tau_rate, num_tree_prob, temperature, i_vec, j_vec);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
@@ -1410,7 +1412,7 @@ Hypers::Hypers(Rcpp::List hypers) {
 
   s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
   logs = log(s);
-  logZ = logs;
+  // logZ = logs;
 
   group_to_vars.resize(s.size());
   for(int i = 0; i < s.size(); i++) {
@@ -1805,7 +1807,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 void Forest::set_s(const arma::vec& s_) {
   hypers.s = s_;
   hypers.logs = log(s_);
-  hypers.logZ = hypers.logs;
+  // hypers.logZ = hypers.logs;
 }
 
 arma::uvec Forest::get_counts() {

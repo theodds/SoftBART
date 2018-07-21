@@ -34,7 +34,8 @@ struct Hypers {
   arma::vec zeta; 
   double eta;
   double nu; // TODO Initialize this better
-  HMGLogitNormal* zeta_eta_sampler;
+  HMCLogitNormal* zeta_eta_sampler;
+  double tau;
 
 
   arma::uvec group;
@@ -201,7 +202,7 @@ Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double bet
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature);
+                  double temperature, const arma::uvec& i_vec, const arma::uvec& j_vec);
 
 void GetSuffStats(Node* n, const arma::vec& y,
                   const arma::mat& X, const Hypers& hypers,
