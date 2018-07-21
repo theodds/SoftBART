@@ -3,6 +3,12 @@
 
 #include <RcppArmadillo.h>
 #include "functions.h"
+#include "HMC.h"
+
+
+// TODO LIST:
+// - allow i_vec and j_vec to be passed into SoftBart and InitHypers
+// - Change header for InitHypers
 
 struct Hypers;
 struct Node;
@@ -23,7 +29,14 @@ struct Hypers {
   int num_groups;
   arma::vec s;
   arma::vec logs;
-  arma::vec logZ;
+
+  // Logistic normal stuff
+  arma::vec zeta; 
+  double eta;
+  double nu; // TODO Initialize this better
+  HMGLogitNormal* zeta_eta_sampler;
+
+
   arma::uvec group;
 
   arma::vec rho_propose;

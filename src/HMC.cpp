@@ -170,6 +170,75 @@ arma::vec HMCExpCopula::zeta_to_s(const arma::vec& zeta) {
   return(exp(z - logsumexp(z)));
 }
 
+double HMCLogitNormal::calc_likelihood(const arma::vec& zetanu) {
+
+  int P = zetanu.size() - 1;
+  vec zeta = zetanu.rows(0, P-1);
+  double eta = zetanu(P);
+  double nu = exp(eta);
+  vec Z = nu * zeta;
+  vec logs = Z - log_sum_exp(Z);
+
+  double out = 0.0;
+
+  // First term of loglik
+  out += dot(counts, logs);
+
+  // Second term of loglik
+  out += -0.5 * dot(zeta, zeta);
+
+  // Graph term of loglik
+  int num_edge = i_vec.size();
+  for(int n = 0; n < num_edge; n++) {
+    int i = i_vec(n) - 1;
+    int j = j_vec(n) - 1;
+    if(i < j) {
+      double delta_sq = std::pow(zeta(i) - zeta(j), 2);
+      out += -a * log(b + 0.5 * delta_sq);
+    }
+  }
+
+  // Prior of eta
+  out += eta - nu / tau;
+
+  // Return
+  return eta;
+}
+
+vec HMCLogitNormal::calc_gradient(const arma::vec& zetaeta) {
+  
+  int P = zetanu.size() - 1;
+  vec zeta = zetanu.rows(0, P-1);
+  double eta = zetanu(P);
+  double nu = exp(eta);
+  vec Z = nu * zeta;
+  vec logs = Z - log_sum_exp(Z);
+  vec s = exp(logs);
+  double B = sum(counts);
+
+  vec out = zeros<vec>(P+1);
+
+  // zeta gradient: first term and second term
+  for(int j = 0; j < P; j++) {
+    out(j) += nu * (counts(j) - B * s(j)) - zeta(j);
+  }
+
+  // zeta gradient: graph term
+  int num_edge = i_vec.size();
+  for(int n = 0; n < num_edge; n++) {
+    int i = i_vec(n) - 1;
+    int j = j_vec(n) - 1;
+    double delta = zeta(i) - zeta(j);
+    double delta_sq = std::pow(delta, 2);
+    out(i) += -a * delta / (b + 0.5 * delta_sq);
+  }
+
+  // eta gradient
+  out(P) += nu * (dot(counts, zeta) - B * dot(s, zeta)) + 1 - nu / tau;
+
+  return out;
+}
+
 // [[Rcpp::export]]
 arma::mat fit_logistic(const arma::mat& X, const arma::vec& Y, int num_iter) {
   int P = X.n_cols;
@@ -218,3 +287,4 @@ arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter, int n
 
   return out;
 }
+

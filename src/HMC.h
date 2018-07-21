@@ -81,3 +81,30 @@ struct HMCExpCopula : HMCSampler {
   }
 
 };
+
+struct HMCLogitNormal : HMCSampler {
+
+  double calc_likelihood(const arma::vec& zetaeta);
+  arma::vec calc_gradient(const arma::vec& zetaeta);
+
+  arma::uvec counts;
+  const arma::uvec  i_vec;
+  const arma::uvec  j_vec;
+  double tau;
+  double a = 4.0;
+  double b = 1.0;
+
+  HMCLogitNormal(const arma::uvec& countss,
+                 double tauu,
+                 const arma::uvec& i_vecc,
+                 const arma::uvec& j_vecc,
+                 double eps,
+                 int leap,
+                 int num_adapt) : HMCLogitNormal(eps, leap, num_adapt) {
+    counts = countss;
+    i_vec = i_vecc;
+    j_vec = j_vecc;
+    tau = tauu;
+  }
+
+};

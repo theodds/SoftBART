@@ -66,7 +66,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature) {
+                  double temperature, const uvec& i_vec, const uvec& j_vec) {
 
   int GRID_SIZE = 1000;
 
@@ -81,9 +81,11 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_tree = num_tree;
 
   out.num_groups = group.max() + 1;
+  out.zeta = zeros<vec>(out.num_groups);
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
-  out.logZ = out.logs;
+  out.nu = 2.0;
+  out.eta = log(out.nu);
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -112,6 +114,14 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   for(int i = 0; i < GRID_SIZE - 1; i++) {
     out.rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
   }
+
+
+  double epsilon = 1.0;
+  int num_leap = 20;
+  int num_adapt = 2500;
+  vec counts = zeros<vec>(num_groups);
+  out.zeta_eta_sampler = new HMCLogitNormal(counts, out.tau, i_vec, j_vec,
+                                            epsilon, num_leap, num_adapt);
 
   return out;
 }
@@ -1013,18 +1023,38 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
   log-sum-exp trick */
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
-  // Get shape vector
-  vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
-  shape_up = shape_up + get_var_counts(forest, hypers);
-
-  // Sample unnormalized s on the log scale
-  for(int i = 0; i < shape_up.size(); i++) {
-    hypers.logZ(i) = rlgam(shape_up(i));
+  // Initialize
+  int P = hypers.num_groups;
+  vec zetaeta = zeros<vec>(P + 1);
+  for(int j = 0; j < P; j++) {
+    zetaeta(j) = zeta(j);
   }
-  // Normalize s on the log scale, then exponentiate
-  hypers.logs = hypers.logZ - log_sum_exp(hypers.logZ);
-  hypers.s = exp(hypers.logs);
-  hypers.logZ = hypers.logs + rlgam(hypers.alpha);
+  zetaeta(P) = eta;
+
+  // Set up sampler
+  zeta_eta_sampler->counts = get_var_counts(forest,hypers);
+  if(zeta_eta_sampler->num_iter == 0) zeta_eta_sampler->find_reasonable_epsilon(zetaeta);
+
+  zetaeta = zeta_eta_sampler->do_hmc_iteration_dual(zetaeta);
+  zeta = zetaeta.rows(0,P-1);
+  eta = zetaeta(P);
+  nu = exp(eta);
+  vec Z = nu * zeta;
+  logs = Z - log_sum_exp(Z);
+  s = exp(logs);
+
+  // Get shape vector
+  // vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
+  // shape_up = shape_up + get_var_counts(forest, hypers);
+
+  // // Sample unnormalized s on the log scale
+  // for(int i = 0; i < shape_up.size(); i++) {
+  //   hypers.logZ(i) = rlgam(shape_up(i));
+  // }
+  // // Normalize s on the log scale, then exponentiate
+  // hypers.logs = hypers.logZ - log_sum_exp(hypers.logZ);
+  // hypers.s = exp(hypers.logs);
+  // hypers.logZ = hypers.logs + rlgam(hypers.alpha);
 
 }
 
