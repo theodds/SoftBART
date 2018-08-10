@@ -1039,7 +1039,7 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
   hypers.zeta = zetaeta.rows(0,P-1);
   hypers.eta = zetaeta(P);
   hypers.nu = exp(hypers.eta);
-  vec Z = hypers.nu * hypers.zeta;
+  vec Z = hypers.nu * hypers.zeta; // Transform is identity
   hypers.logs = Z - log_sum_exp(Z);
   hypers.s = exp(hypers.logs);
 

@@ -170,11 +170,11 @@ arma::vec HMCExpCopula::zeta_to_s(const arma::vec& zeta) {
   return(exp(z - logsumexp(z)));
 }
 
-double HMCLogitNormal::calc_likelihood(const arma::vec& zetanu) {
+double HMCLogitNormal::calc_likelihood(const arma::vec& zetaeta) {
 
-  int P = zetanu.size() - 1;
-  vec zeta = zetanu.rows(0, P-1);
-  double eta = zetanu(P);
+  int P = zetaeta.size() - 1;
+  vec zeta = zetaeta.rows(0, P-1);
+  double eta = zetaeta(P);
   double nu = exp(eta);
   vec Z = nu * zeta;
   vec logs = Z - log_sum_exp(Z);
