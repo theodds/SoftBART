@@ -202,7 +202,7 @@ double HMCLogitNormal::calc_likelihood(const arma::vec& zetaeta) {
   out += eta - nu / tau;
 
   // Return
-  return eta;
+  return out;
 }
 
 vec HMCLogitNormal::calc_gradient(const arma::vec& zetaeta) {

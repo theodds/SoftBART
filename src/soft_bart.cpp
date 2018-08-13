@@ -81,11 +81,13 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_tree = num_tree;
 
   out.num_groups = group.max() + 1;
-  out.zeta = zeros<vec>(out.num_groups);
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.nu = 2.0;
+  out.zeta = zeros<vec>(out.num_groups);
   out.eta = log(out.nu);
+  // out.tau = (double) out.num_groups;
+  out.tau = 10.0;
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -510,6 +512,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   vec sigma = zeros<vec>(opts.num_save);
   vec sigma_mu = zeros<vec>(opts.num_save);
   vec alpha = zeros<vec>(opts.num_save);
+  vec nu = zeros<vec>(opts.num_save);
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
   mat s = zeros<mat>(opts.num_save, hypers.s.size());
@@ -546,6 +549,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     tau_rate(i) = hypers.tau_rate;
     loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
     loglik(i) = sum(loglik_train.row(i));
+    nu(i) = hypers.nu;
     num_tree(i) = hypers.num_tree;
 
     if((i + 1) % opts.num_print == 0) {
@@ -572,6 +576,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["b_hat"] = b_hat;
   out["mean_log_Z"] = mean_log_Z;
   out["alpha"] = alpha;
+  out["nu"] = nu;
   out["beta"] = beta;
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
@@ -590,7 +595,6 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
                        const Opts& opts) {
   IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
   if(opts.update_s) UpdateS(forest, hypers);
-  if(opts.update_alpha) hypers.UpdateAlpha();
   if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
 

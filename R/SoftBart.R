@@ -148,8 +148,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL
   ## If graph not provided, compute graph
   if(is.null(my_graph)) {
     huge_graph <- huge(X)
-    huge_select <- huge.select(huge_grpah)
-    my_graph <- summary(huge_select$refit)
+    huge_select <- huge.select(huge_graph)
+    my_graph <- Matrix::summary(huge_select$refit)
   }
 
   ## Normalize Y
