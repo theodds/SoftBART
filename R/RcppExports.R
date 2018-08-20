@@ -17,6 +17,10 @@ fit_copula <- function(counts, sigma, num_iter, num_leap) {
     .Call('_SoftBart_fit_copula', PACKAGE = 'SoftBart', counts, sigma, num_iter, num_leap)
 }
 
+fit_logitnormal <- function(counts, tau, i_vec, j_vec, num_iter, num_leap) {
+    .Call('_SoftBart_fit_logitnormal', PACKAGE = 'SoftBart', counts, tau, i_vec, j_vec, num_iter, num_leap)
+}
+
 rcpparma_hello_world <- function() {
     .Call('_SoftBart_rcpparma_hello_world', PACKAGE = 'SoftBart')
 }

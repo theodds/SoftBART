@@ -3,6 +3,7 @@ using namespace arma;
 using namespace Rcpp;
 
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::plugins("cpp0x")]]
 
 vec rnorm_vec(int N) {
   vec out = zeros<vec>(N);
@@ -288,3 +289,37 @@ arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter, int n
   return out;
 }
 
+// [[Rcpp::export]]
+Rcpp::List fit_logitnormal(arma::uvec& counts,
+                           double tau,
+                           arma::uvec& i_vec,
+                           arma::uvec& j_vec,
+                           int num_iter,
+                           int num_leap) {
+
+
+
+  int P = counts.size();
+  vec zetaeta = zeros<vec>(P+1);
+  mat warmup = zeros<mat>(num_iter, P+1);
+  mat samps = zeros<mat>(num_iter, P+1);
+  List out;
+
+  HMCLogitNormal* sampler = new HMCLogitNormal(counts, tau, i_vec, j_vec, 1.0,
+                                               num_leap, num_iter);
+  sampler->find_reasonable_epsilon(zetaeta);
+
+  for(int i = 0; i < num_iter; i++) {
+    zetaeta = sampler->do_hmc_iteration_dual(zetaeta);
+    warmup.row(i) = trans(zetaeta);
+  }
+  for(int i = 0; i < num_iter; i++) {
+    zetaeta = sampler->do_hmc_iteration_dual(zetaeta);
+    samps.row(i) = trans(zetaeta);
+  }
+
+  out["warmup"] = warmup;
+  out["samps"] = samps;
+  return(out);
+
+}

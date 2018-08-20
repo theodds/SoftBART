@@ -83,7 +83,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_groups = group.max() + 1;
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
-  out.nu = 2.0;
+  out.nu = 1.0;
   out.zeta = zeros<vec>(out.num_groups);
   out.eta = log(out.nu);
   // out.tau = (double) out.num_groups;
@@ -119,8 +119,8 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
 
 
   double epsilon = 1.0;
-  int num_leap = 20;
-  int num_adapt = 2500;
+  int num_leap = 200;
+  int num_adapt = 5000;
   uvec counts = zeros<uvec>(out.num_groups);
   out.zeta_eta_sampler = new HMCLogitNormal(counts, out.tau, i_vec, j_vec,
                                             epsilon, num_leap, num_adapt);

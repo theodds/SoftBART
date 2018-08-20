@@ -115,4 +115,6 @@ struct HMCLogitNormal : HMCSampler {
 
 };
 
+
+
 #endif
