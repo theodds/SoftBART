@@ -41,21 +41,41 @@ void HMCSampler::do_leapfrog(vec& theta, vec& r, double epsilon_0) {
 
 arma::vec HMCSampler::do_hmc_iteration(const arma::vec& theta) {
 
-  vec r = rnorm_vec(theta.size());
-  vec r_tilde = r;
+  vec p = rnorm_vec(theta.size());
+  vec current_p = p;
+  double epsilon_0 = R::runif(0.8, 1.2) * epsilon;
 
-  // vec theta_new = theta;
+  // Make half-step for moment at the beginning
+  p = p + 0.5 * epsilon_0 * calc_gradient(theta);
+
   vec theta_tilde = theta;
 
+  // Alternate full steps for position and momentum
   for(int i = 0; i < num_leapfrog; i++) {
-    double epsilon_0 = -log(unif_rand()) * epsilon;
-    do_leapfrog(theta_tilde, r_tilde, epsilon_0);
+    // Make a full step for the position
+
+    theta_tilde = theta_tilde + epsilon_0 * p;
+
+    // Make a full step for the momentum, except at the end of trajectory
+    if(i < num_leapfrog - 1) p = p + epsilon_0 * calc_gradient(theta_tilde);
   }
+  // Make a half step for momentum at the end
+  p = p + 0.5 * epsilon * calc_gradient(theta_tilde);
 
-  double log_alpha = calc_likelihood(theta_tilde) - calc_likelihood(theta)
-    - 0.5 * sum(r_tilde % r_tilde) + 0.5 * sum(r % r);
+  // Negate the momentum at end of trajectory to make the proposal symmetric
+  p = -p;
 
-  return log(unif_rand()) < log_alpha ? theta_tilde : theta;
+  // Evaluate potential and kenetic energies at start and end of trajectory
+  double current_loglik = calc_likelihood(theta);
+  double current_momentum = -0.5 * dot(current_p, current_p);
+  double proposed_loglik = calc_likelihood(theta_tilde);
+  double proposed_momentum = -0.5 * dot(p, p);
+
+  // Accept or reject the state at end of trajectory, returning either the
+  // position at the end of the trajectory or the initial position
+  double log_accept = proposed_loglik + proposed_momentum - current_loglik - current_momentum;
+
+  return log(unif_rand()) < log_accept ? theta_tilde : theta;
 
 }
 
@@ -240,6 +260,20 @@ vec HMCLogitNormal::calc_gradient(const arma::vec& zetaeta) {
   return out;
 }
 
+double HMCPoissonOffsetScaled::calc_likelihood(const arma::vec& zeta) {
+  vec theta = zeta % scales;
+  double out = -0.5 * dot(theta, Sigma_inv * theta)
+    - phi * sum(exp(theta))
+    + sum(Y % theta);
+  return out;
+}
+
+arma::vec HMCPoissonOffsetScaled::calc_gradient(const arma::vec& zeta) {
+  vec theta = zeta % scales;
+  vec out = -scales % (Sigma_inv * theta - Y + phi * exp(theta));
+  return out;
+}
+
 // [[Rcpp::export]]
 arma::mat fit_logistic(const arma::mat& X, const arma::vec& Y, int num_iter) {
   int P = X.n_cols;
@@ -287,6 +321,61 @@ arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter, int n
   Rcout << "\nEnding epsilon = " << sampler->epsilon << "\n";
 
   return out;
+}
+
+// [[Rcpp::export]]
+Rcpp::List fit_logitnormal_2(arma::vec& counts,
+                             arma::vec& mu,
+                             arma::mat& Sigma_inv,
+                             arma::vec& theta_init,
+                             int num_iter,
+                             int num_leap) {
+
+  // Constants
+  int P = counts.size();
+  double N = sum(counts);
+  vec theta_0 = theta_init;
+  mat warmup = zeros<mat>(num_iter, P);
+  mat samps = zeros<mat>(num_iter, P);
+  List out;
+
+  // Compute reasonable scales
+  vec scales = zeros<vec>(P);
+  for(int p = 0; p < P; p++) {
+    double as = counts(p) < 1 ? R::trigamma(1.0) : R::trigamma(counts(p));
+    double a = 1.0 / as;
+    double b = Sigma_inv(p,p);
+    scales(p) = 1.0 / sqrt(a + b);
+  }
+
+  // Initialize the sampler
+  double epsilon = 0.2;
+  double phi_0 = 1.0;
+  int num_adapt = 1;
+  vec zeta_0 = theta_0 / scales;
+  HMCPoissonOffsetScaled* sampler =
+    new HMCPoissonOffsetScaled(counts, mu, Sigma_inv, scales, phi_0,
+                               epsilon, num_leap, num_adapt);
+  
+  // Collect samples
+  for(int i = 0; i < num_iter; i++) {
+    sampler->phi = R::rgamma(N, 1.0/sum(exp(theta_0)));
+    zeta_0 = sampler->do_hmc_iteration(zeta_0);
+    theta_0 = zeta_0 % scales;
+    warmup.row(i) = theta_0.t();
+  }
+  for(int i = 0; i < num_iter; i++) {
+    sampler->phi = R::rgamma(N, 1.0/sum(exp(theta_0)));
+    zeta_0 = sampler->do_hmc_iteration(zeta_0);
+    theta_0 = zeta_0 % scales;
+    samps.row(i) = theta_0.t();
+  }
+
+  out["warmup"] = warmup;
+  out["samps"] = samps;
+
+  return out;
+
 }
 
 // [[Rcpp::export]]

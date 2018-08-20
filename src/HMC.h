@@ -115,6 +115,27 @@ struct HMCLogitNormal : HMCSampler {
 
 };
 
+struct HMCPoissonOffsetScaled : HMCSampler {
 
+  double calc_likelihood(const arma::vec& zeta);
+  arma::vec calc_gradient(const arma::vec& zeta);
+
+  const arma::vec Y;
+  const arma::vec mu;
+  const arma::mat Sigma_inv;
+  const arma::vec scales;
+  double phi;  // This is the offset
+
+  HMCPoissonOffsetScaled(arma::vec& YY,
+                         arma::vec& muu,
+                         arma::mat Sigma_invv,
+                         arma::vec scaless,
+                         double& phii,
+                         double eps,
+                         int leap,
+                         int num_adapt) :
+  HMCSampler(eps, leap, num_adapt), Y(YY), mu(muu), Sigma_inv(Sigma_invv), scales(scaless), phi(phii) {};
+
+};
 
 #endif
