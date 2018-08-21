@@ -121,14 +121,14 @@ struct HMCPoissonOffsetScaled : HMCSampler {
   arma::vec calc_gradient(const arma::vec& zeta);
 
   const arma::vec Y;
-  const arma::vec mu;
-  const arma::mat Sigma_inv;
-  const arma::vec scales;
+  arma::vec mu;
+  arma::sp_mat Sigma_inv;
+  arma::vec scales;
   double phi;  // This is the offset
 
   HMCPoissonOffsetScaled(arma::vec& YY,
                          arma::vec& muu,
-                         arma::mat Sigma_invv,
+                         arma::sp_mat Sigma_invv,
                          arma::vec scaless,
                          double& phii,
                          double eps,

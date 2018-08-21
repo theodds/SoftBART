@@ -326,7 +326,7 @@ arma::mat fit_copula(const arma::uvec& counts, double sigma, int num_iter, int n
 // [[Rcpp::export]]
 Rcpp::List fit_logitnormal_2(arma::vec& counts,
                              arma::vec& mu,
-                             arma::mat& Sigma_inv,
+                             arma::sp_mat& Sigma_inv,
                              arma::vec& theta_init,
                              int num_iter,
                              int num_leap) {
@@ -375,6 +375,194 @@ Rcpp::List fit_logitnormal_2(arma::vec& counts,
   out["samps"] = samps;
 
   return out;
+
+}
+
+void UpdateOmegaInv(arma::sp_mat& Omega_inv,
+                    const arma::vec& theta,
+                    double nu,
+                    double a, double b) {
+
+
+  // Init all diag to 1
+  for(int p = 0; p < theta.size(); p++) {
+    Omega_inv(p,p) = 1.0;
+  }
+  // Loop over the lower triangle
+  for(sp_mat::iterator it = Omega_inv.begin(); it != Omega_inv.end(); ++it) {
+    int row = it.row();
+    int col = it.col();
+    if(row < col) {
+      double rate_up = b + 0.5 * pow(theta(row) - theta(col), 2) / nu;
+      double scale_up = 1.0 / rate_up;
+      double omega = R::rgamma(a, scale_up);
+      Omega_inv(row, col) = -omega;
+      Omega_inv(col, row) = -omega;
+      Omega_inv(row, row) = Omega_inv(row,row) + omega;
+      Omega_inv(col, col) = Omega_inv(col, col) + omega;
+    }
+  }
+}
+
+double UpdateTau(const arma::vec& theta_0, const arma::sp_mat& Omega_inv) {
+
+  double shape_up = 0.5 * theta_0.size() + 1.0;
+  double rate_up = 0.5 * dot(theta_0, Omega_inv * theta_0);
+  double scale_up = 1.0 / rate_up;
+  return R::rgamma(shape_up, scale_up);
+
+}
+
+void GetReasonableScales(arma::vec& scales, const arma::vec& counts, const arma::sp_mat& Sigma_inv) {
+  for(int p = 0; p < scales.size(); p++) {
+    double as = counts(p) < 1 ? R::trigamma(1.0) : R::trigamma(counts(p));
+    double a = 1.0 / as;
+    double b = Sigma_inv(p,p);
+    scales(p) = 1.0 / sqrt(a + b);
+  }
+}
+
+// [[Rcppp::export]]
+Rcpp::List fit_logit_laplace(arma::vec& counts,
+                             const arma::sp_mat& Graph,
+                             const arma::vec& theta_init,
+                             int num_iter,
+                             int num_leap) {
+
+  // Constants
+  int P = counts.size();
+  double N = sum(counts);
+  double a_omega = 4.0;
+  double b_omega = 1.0;
+  vec mu = zeros<vec>(P);
+  mat theta_out = zeros<mat>(num_iter, P);
+  vec nu_out = zeros<vec>(num_iter);
+
+
+  // Variables
+  double tau = 1.0;
+  vec theta_0 = theta_init;
+  sp_mat Omega_inv = Graph;
+  for(int p = 0; p < P; p++) {
+    Omega_inv(p,p) = 1.0;
+  }
+  sp_mat Sigma_inv = Omega_inv * tau;
+  double phi_0 = 1.0;
+  vec scales = ones<vec>(P);
+  vec zeta_0 = theta_0 / scales;
+
+  // Initialize HMC sampler
+  double epsilon = 0.2;
+  int num_adapt = 1;
+  HMCPoissonOffsetScaled* sampler =
+    new HMCPoissonOffsetScaled(counts, mu, Omega_inv, scales, phi_0,
+                               epsilon, num_leap, num_adapt);
+
+  // Collect Samples
+  for(int i = 0; i < num_iter; i++) {
+
+    UpdateOmegaInv(Omega_inv, theta_0, 1.0/tau, a_omega, b_omega); 
+    tau = UpdateTau(theta_0, Omega_inv);
+    Sigma_inv = tau * Omega_inv;
+    GetReasonableScales(scales, counts, Sigma_inv);
+
+    // Do HMC by (1) rescaling zeta, (2) loading scales and Sigma_inv into HMC
+    // (3) updating phi, (4) updating zeta, and (5) getting theta from zeta
+
+    zeta_0 = theta_0 / scales;
+    sampler->scales = scales;
+    sampler->Sigma_inv = Sigma_inv;
+    sampler->phi = R::rgamma(N, 1.0 / sum(exp(theta_0)));
+    zeta_0 = sampler->do_hmc_iteration(zeta_0);
+    theta_0 = zeta_0 % scales;
+
+    theta_out.row(i) = theta_0.t();
+    nu_out(i) = 1.0 / tau;
+
+  }
+
+  List out;
+  out["nu"] = nu_out;
+  out["theta"] = theta_out;
+
+}
+
+// [[Rcpp::export]]
+Rcpp::List fit_logitnormal_nu(arma::vec& counts,
+                              const arma::sp_mat& Omega_inv,
+                              const arma::vec& theta_init,
+                              int num_iter,
+                              int num_leap) {
+
+  // Constants
+  int P = counts.size();
+  double N = sum(counts);
+  double tau = 1.0;
+  sp_mat Sigma_inv = tau * Omega_inv;
+  vec theta_0 = theta_init;
+  vec nu_out = zeros<vec>(num_iter);
+  mat theta_out = zeros<mat>(num_iter, P);
+  vec mu = zeros<vec>(P);
+
+  // Compute reasonable Scales
+  vec scales = zeros<vec>(P);
+  for(int p = 0; p < P; p++) {
+    double as = counts(p) < 1 ? R::trigamma(1.0) : R::trigamma(counts(p));
+    double a = 1.0 / as;
+    double b = Sigma_inv(p,p);
+    scales(p) = 1.0 / sqrt(a + b);
+  }
+  vec zeta_0 = theta_0 / scales;
+
+  // Initialize HMC Sampler
+  double epsilon = 0.2;
+  double phi_0 = 1.0;
+  int num_adapt = 1;
+  HMCPoissonOffsetScaled* sampler =
+    new HMCPoissonOffsetScaled(counts, mu, Sigma_inv, scales, phi_0,
+                               epsilon, num_leap, num_adapt);
+
+  // Collect Samples
+  for(int i = 0; i < num_iter; i++) {
+
+
+    // Compute reasonable scales
+    for(int p = 0; p < P; p++) {
+      double as = counts(p) < 1 ? R::trigamma(1.0) : R::trigamma(counts(p));
+      double a = 1.0 / as;
+      double b = Sigma_inv(p,p);
+      scales(p) = 1.0 / sqrt(a + b);
+    }
+    vec zeta_0 = theta_0 / scales;
+    sampler->scales = scales;
+
+    sampler->phi = R::rgamma(N, 1.0 / sum(exp(theta_0)));
+    zeta_0 = sampler->do_hmc_iteration(zeta_0);
+    theta_0 = zeta_0 % scales;
+
+    // Update tau
+    double shape_up = 0.5 * P + 1.0;
+    double scale_up = 1.0/( 0.5 * dot(theta_0, Omega_inv * theta_0) );
+    double tau_prop = R::rgamma(shape_up, scale_up);
+    // double xi_prop = sqrt(tau_prop) / (sqrt(tau_prop) + 1.0);
+    // double xi_current = sqrt(tau) / (sqrt(tau) + 1.0);
+    // double loglik_rat =
+    //   R::dbeta(xi_prop, 0.5, 1.0, 1) - R::dbeta(xi_current, 0.5, 1.0, 1)
+    //   - 0.5 * log(tau_prop) - log(sqrt(tau_prop) + 1.0)
+    //   + 0.5 * log(tau) + log(sqrt(tau) + 1.0);
+    // tau = log(unif_rand()) < loglik_rat ? tau_prop : tau;
+    tau = tau_prop;
+    nu_out(i) = 1.0 / tau;
+    theta_out.row(i) = theta_0.t();
+    Sigma_inv = tau * Omega_inv;
+    sampler->Sigma_inv = Sigma_inv;
+  }
+
+  List out;
+  out["nu"] = nu_out;
+  out["theta"] = theta_out;
+
+  return(out);
 
 }
 
