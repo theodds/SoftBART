@@ -72,6 +72,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fit_logit_laplace
+Rcpp::List fit_logit_laplace(arma::vec& counts, const arma::sp_mat& Graph, const arma::vec& theta_init, int num_iter, int num_leap);
+RcppExport SEXP _SoftBart_fit_logit_laplace(SEXP countsSEXP, SEXP GraphSEXP, SEXP theta_initSEXP, SEXP num_iterSEXP, SEXP num_leapSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec& >::type counts(countsSEXP);
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type Graph(GraphSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type theta_init(theta_initSEXP);
+    Rcpp::traits::input_parameter< int >::type num_iter(num_iterSEXP);
+    Rcpp::traits::input_parameter< int >::type num_leap(num_leapSEXP);
+    rcpp_result_gen = Rcpp::wrap(fit_logit_laplace(counts, Graph, theta_init, num_iter, num_leap));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fit_logitnormal_nu
 Rcpp::List fit_logitnormal_nu(arma::vec& counts, const arma::sp_mat& Omega_inv, const arma::vec& theta_init, int num_iter, int num_leap);
 RcppExport SEXP _SoftBart_fit_logitnormal_nu(SEXP countsSEXP, SEXP Omega_invSEXP, SEXP theta_initSEXP, SEXP num_iterSEXP, SEXP num_leapSEXP) {
@@ -223,6 +238,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_fit_logistic", (DL_FUNC) &_SoftBart_fit_logistic, 3},
     {"_SoftBart_fit_copula", (DL_FUNC) &_SoftBart_fit_copula, 4},
     {"_SoftBart_fit_logitnormal_2", (DL_FUNC) &_SoftBart_fit_logitnormal_2, 6},
+    {"_SoftBart_fit_logit_laplace", (DL_FUNC) &_SoftBart_fit_logit_laplace, 5},
     {"_SoftBart_fit_logitnormal_nu", (DL_FUNC) &_SoftBart_fit_logitnormal_nu, 5},
     {"_SoftBart_fit_logitnormal", (DL_FUNC) &_SoftBart_fit_logitnormal, 6},
     {"_SoftBart_rcpparma_hello_world", (DL_FUNC) &_SoftBart_rcpparma_hello_world, 0},

@@ -422,7 +422,7 @@ void GetReasonableScales(arma::vec& scales, const arma::vec& counts, const arma:
   }
 }
 
-// [[Rcppp::export]]
+// [[Rcpp::export]]
 Rcpp::List fit_logit_laplace(arma::vec& counts,
                              const arma::sp_mat& Graph,
                              const arma::vec& theta_init,

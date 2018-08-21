@@ -21,6 +21,10 @@ fit_logitnormal_2 <- function(counts, mu, Sigma_inv, theta_init, num_iter, num_l
     .Call('_SoftBart_fit_logitnormal_2', PACKAGE = 'SoftBart', counts, mu, Sigma_inv, theta_init, num_iter, num_leap)
 }
 
+fit_logit_laplace <- function(counts, Graph, theta_init, num_iter, num_leap) {
+    .Call('_SoftBart_fit_logit_laplace', PACKAGE = 'SoftBart', counts, Graph, theta_init, num_iter, num_leap)
+}
+
 fit_logitnormal_nu <- function(counts, Omega_inv, theta_init, num_iter, num_leap) {
     .Call('_SoftBart_fit_logitnormal_nu', PACKAGE = 'SoftBart', counts, Omega_inv, theta_init, num_iter, num_leap)
 }
