@@ -66,7 +66,7 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double gamma, double k, double width, double shape,
                   int num_tree, double alpha_scale, double alpha_shape_1,
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature, const uvec& i_vec, const uvec& j_vec) {
+                  double temperature, const sp_mat& Graph, bool graph_laplacian) {
 
   int GRID_SIZE = 1000;
 
@@ -83,11 +83,11 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.num_groups = group.max() + 1;
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
-  out.nu = 1.0;
   out.zeta = zeros<vec>(out.num_groups);
-  out.eta = log(out.nu);
-  // out.tau = (double) out.num_groups;
   out.tau = 10.0;
+  out.Graph = Graph;
+  out.graph_laplacian = graph_laplacian;
+  
 
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
@@ -118,12 +118,6 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   }
 
 
-  double epsilon = 1.0;
-  int num_leap = 200;
-  int num_adapt = 5000;
-  uvec counts = zeros<uvec>(out.num_groups);
-  out.zeta_eta_sampler = new HMCLogitNormal(counts, out.tau, i_vec, j_vec,
-                                            epsilon, num_leap, num_adapt);
 
   return out;
 }
@@ -1021,46 +1015,91 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
   }
 }
 
-/*Note: Because the shape of the Dirichlet will mostly be small, we sample from
-  the Dirichlet distribution by sampling log-gamma random variables using the
-  technique of Liu, Martin, and Syring (2017+) and normalizing using the
-  log-sum-exp trick */
-void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+// UpdateS Stuff -----------------------------------------------------------
 
-  // Initialize
-  int P = hypers.num_groups;
-  vec zetaeta = zeros<vec>(P + 1);
-  for(int j = 0; j < P; j++) {
-    zetaeta(j) = hypers.zeta(j);
-  }
-  zetaeta(P) = hypers.eta;
+arma::sp_mat get_sigma_inv(Hypers& hypers);
+double calc_U_logit(const arma::vec& zeta, const arma::vec& counts,
+                    const arma::sp_mat& Sigma_inv, double tau);
+arma::vec calc_grad_logit(const arma::vec& zeta, const arma::vec& counts,
+                          const arma::sp_mat& Sigma_inv, double tau);
+double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
 
-  // Set up sampler
-  hypers.zeta_eta_sampler->counts = get_var_counts(forest,hypers);
-  if(hypers.zeta_eta_sampler->num_iter == 0) hypers.zeta_eta_sampler->find_reasonable_epsilon(zetaeta);
+  double shape = 0.5 * (zeta.size() - 1);
+  double rate = 0.5 * dot(zeta, Sigma_inv * zeta);
+  double scale = 1.0 / rate;
+  double tau = R::rgamma(shape, scale);
 
-  zetaeta = hypers.zeta_eta_sampler->do_hmc_iteration_dual(zetaeta);
-  hypers.zeta = zetaeta.rows(0,P-1);
-  hypers.eta = zetaeta(P);
-  hypers.nu = exp(hypers.eta);
-  vec Z = hypers.nu * hypers.zeta; // Transform is identity
-  hypers.logs = Z - log_sum_exp(Z);
-  hypers.s = exp(hypers.logs);
-
-  // Get shape vector
-  // vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
-  // shape_up = shape_up + get_var_counts(forest, hypers);
-
-  // // Sample unnormalized s on the log scale
-  // for(int i = 0; i < shape_up.size(); i++) {
-  //   hypers.logZ(i) = rlgam(shape_up(i));
-  // }
-  // // Normalize s on the log scale, then exponentiate
-  // hypers.logs = hypers.logZ - log_sum_exp(hypers.logZ);
-  // hypers.s = exp(hypers.logs);
-  // hypers.logZ = hypers.logs + rlgam(hypers.alpha);
+  return tau;
 
 }
+
+void UpdateS(std::vector<Node*> forest, Hypers& hypers) {
+
+  int P = hypers.num_groups;
+  int L = 50;
+  vec epsilon = 0.2 * ones<vec>(P);
+  vec counts = conv_to<vec>(get_var_counts(forest, hypers));
+  vec s_hat = (counts + 1.0/P) / sum(counts + 1.0/P);
+  double total_counts = sum(counts);
+
+  // Get the graph
+  arma::sp_mat Sigma_inv = get_sigma_inv(hypers);
+
+  // Get appropriate scales for the HMC using heuristic from Neal's dissertation
+  for(int p = 0; p < P; p++) {
+    epsilon(p) = epsilon(p) *
+      (total_counts * s_hat % (1.0 - s_hat) + Sigma_inv(p,p) * tau);
+  }
+  
+  // Doing HMC: basically just copies Radford Neal's code
+  vec q = hypers.zeta;
+  vec p = zeros<vec>(P); for(int i = 0; i < P; i++) p(i) = norm_rand();
+  vec current_p = p;
+  p = p - 0.5 * epsilon % calc_grad_logit(q, counts, Sigma_inv, tau);
+  for(int i = 0; i < L; i++) {
+    q = q + epsilon % p;
+    if(i != L) p = p - epsilon % grad_U(q, counts, Sigma_inv, tau);
+  }
+  p = p - 0.5 * epsilon % calc_grad_logit(q,counts,Sigma_inv, tau);
+  p = -p;
+  double current_U = calc_U_logit(hypers.zeta, counts, Sigma_inv, tau);
+  double current_K = 0.5 * dot(current_p, current_p);
+  double proposed_U = calc_U_logit(q, counts, Sigma_inv, tau);
+  double proposed_K = 0.5 * dot(p,p);
+  if(log(unif_rand()) < current_U - proposed_U + current_K - proposed_K) {
+    hypers.zeta = q;
+  }
+
+  // Update Tau: This updates tau with a flat prior, probably not ideal
+  hypers.tau = UpdateTau(hypers.zeta, Sigma_inv);
+
+}
+
+// End Update S-------------------------------------------------------------
+
+// void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
+
+//   // Initialize
+//   int P = hypers.num_groups;
+//   vec zetaeta = zeros<vec>(P + 1);
+//   for(int j = 0; j < P; j++) {
+//     zetaeta(j) = hypers.zeta(j);
+//   }
+//   zetaeta(P) = hypers.eta;
+
+//   // Set up sampler
+//   hypers.zeta_eta_sampler->counts = get_var_counts(forest,hypers);
+//   if(hypers.zeta_eta_sampler->num_iter == 0) hypers.zeta_eta_sampler->find_reasonable_epsilon(zetaeta);
+
+//   zetaeta = hypers.zeta_eta_sampler->do_hmc_iteration_dual(zetaeta);
+//   hypers.zeta = zetaeta.rows(0,P-1);
+//   hypers.eta = zetaeta(P);
+//   hypers.nu = exp(hypers.eta);
+//   vec Z = hypers.nu * hypers.zeta; // Transform is identity
+//   hypers.logs = Z - log_sum_exp(Z);
+//   hypers.s = exp(hypers.logs);
+
+// }
 
 // [[Rcpp::export]]
 double rlgam(double shape) {
@@ -1309,12 +1348,11 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
               double temperature,
-              const arma::uvec& i_vec,
-              const arma::uvec& j_vec,
+              const arma::sp_mat& Graph,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean, bool update_num_tree) {
+              bool update_tau, bool update_tau_mean, bool update_num_tree, bool graph_laplacian) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
@@ -1323,7 +1361,8 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature, i_vec, j_vec);
+                             alpha_shape_2, tau_rate, num_tree_prob, temperature, Graph,
+                             graph_laplacian);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
