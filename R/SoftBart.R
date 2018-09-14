@@ -139,7 +139,7 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item gamma: posterior samples of gamma
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
 #' }
-softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL) {
+softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL, graph_laplacian = TRUE) {
 
   if(is.null(hypers)){
     hypers <- Hypers(X,Y)
@@ -149,7 +149,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL
   if(is.null(my_graph)) {
     huge_graph <- huge(X)
     huge_select <- huge.select(huge_graph)
-    my_graph <- Matrix::summary(huge_select$refit)
+    my_graph <- huge_select$refit
   }
 
   ## Normalize Y
@@ -190,8 +190,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL
                   hypers$tau_rate,
                   hypers$num_tree_prob,
                   hypers$temperature,
-                  my_graph$i,
-                  my_graph$j,
+                  my_graph,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
@@ -203,7 +202,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), my_graph = NULL
                   opts$update_gamma,
                   opts$update_tau,
                   opts$update_tau_mean,
-                  opts$update_num_tree)
+                  opts$update_num_tree, 
+                  graph_laplacian)
 
 
   a <- min(Y)

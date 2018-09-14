@@ -84,7 +84,8 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.zeta = zeros<vec>(out.num_groups);
-  out.tau = 10.0;
+  // out.tau = 1.0/10.0;
+  out.tau = 1.0;
   out.Graph = Graph;
   out.graph_laplacian = graph_laplacian;
   
@@ -1027,7 +1028,7 @@ arma::sp_mat get_sigma_inv(Hypers& hypers)
 
     
   double P = Omega.n_rows;
-  for(sp_mat::iterator it = Omega.begin(); it != hypers.Graph.end(); ++it) {
+  for(sp_mat::iterator it = hypers.Graph.begin(); it != hypers.Graph.end(); ++it) {
 
     int row = it.row();
     int col = it.col();
@@ -1054,7 +1055,7 @@ double calc_U_logit(const arma::vec& zeta, const arma::vec& counts,
 
   double loglik = dot(zeta, counts);
   loglik += -sum(counts) * log_sum_exp(zeta);
-  loglik += -0.5 * dot(zeta, Sigma_inv * zeta);
+  loglik += -0.5 * tau * dot(zeta, Sigma_inv * zeta);
 
   return -loglik;
 
@@ -1063,7 +1064,7 @@ arma::vec calc_grad_logit(const arma::vec& zeta, const arma::vec& counts,
                           const arma::sp_mat& Sigma_inv, double tau)
 {
   vec s = exp(zeta - log_sum_exp(zeta));
-  vec score = counts - sum(counts) * s - Sigma_inv * zeta;
+  vec score = counts - sum(counts) * s - tau * Sigma_inv * zeta;
   return -score;
 }
 double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
@@ -1081,7 +1082,7 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   int P = hypers.num_groups;
   int L = 50;
-  vec epsilon = 0.2 * ones<vec>(P);
+  vec epsilon = 0.5 * ones<vec>(P);
   vec counts = conv_to<vec>::from(get_var_counts(forest, hypers));
   vec s_hat = (counts + 1.0/P) / sum(counts + 1.0/P);
   double total_counts = sum(counts);
@@ -1093,7 +1094,8 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
   // Get appropriate scales for the HMC using heuristic from Neal's dissertation
   for(int p = 0; p < P; p++) {
     epsilon(p) = epsilon(p) *
-      (total_counts * s_hat(p) * (1.0 - s_hat(p)) + Sigma_inv(p,p) * tau);
+      // pow(total_counts * s_hat(p) * (1.0 - s_hat(p)) + Sigma_inv(p,p) * tau, -0.5);
+      pow(total_counts * 0.25 + Sigma_inv(p,p) * tau, -0.5);
   }
   
   // Doing HMC: basically just copies Radford Neal's code
