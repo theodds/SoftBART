@@ -1017,11 +1017,55 @@ void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
 
 // UpdateS Stuff -----------------------------------------------------------
 
-arma::sp_mat get_sigma_inv(Hypers& hypers);
+arma::sp_mat get_sigma_inv(Hypers& hypers)
+{
+
+  if(!hypers.graph_laplacian) return hypers.Graph;
+
+  sp_mat Omega = hypers.Graph;
+
+
+    
+  double P = Omega.n_rows;
+  for(sp_mat::iterator it = Omega.begin(); it != Graph.end() ++it) {
+
+    int row = it.row();
+    int col = it.col();
+    if(row < col) {
+      double shape = 4.0;
+      double rate = 1.0
+        + 0.5 * hypers.tau * pow(hypers.zeta(row) - hypers.zeta(col), 2.0);
+      double scale = 1.0/rate;
+      Omega(row,col) = R::rgamma(shape, scale);
+      Omega(col,row) = Omega(row,col);
+    }
+  }
+
+  sp_mat Sigma_inv = -Omega;
+  vec row_sums = sum(Omega,1);
+  for(int i = 0; i < Sigma_inv.n_rows; i++)
+    Sigma_inv(i,i) = 1 + row_sums(i);
+
+  return Sigma_inv;
+
+}
 double calc_U_logit(const arma::vec& zeta, const arma::vec& counts,
-                    const arma::sp_mat& Sigma_inv, double tau);
+                    const arma::sp_mat& Sigma_inv, double tau) {
+
+  double loglik = dot(zeta, counts);
+  loglik += -sum(counts) * log_sum_exp(zeta);
+  loglik += -0.5 * dot(zeta, Sigma_inv * zeta);
+
+  return -loglik;
+
+}
 arma::vec calc_grad_logit(const arma::vec& zeta, const arma::vec& counts,
-                          const arma::sp_mat& Sigma_inv, double tau);
+                          const arma::sp_mat& Sigma_inv, double tau)
+{
+  vec s = exp(zeta - log_sum_exp(zeta));
+  vec score = counts - sum(counts) * s - Sigma_inv * zeta;
+  return -score;
+}
 double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
 
   double shape = 0.5 * (zeta.size() - 1);
