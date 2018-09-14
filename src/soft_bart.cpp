@@ -543,7 +543,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     tau_rate(i) = hypers.tau_rate;
     loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
     loglik(i) = sum(loglik_train.row(i));
-    nu(i) = hypers.nu;
+    nu(i) = 1.0/hypers.tau;
     num_tree(i) = hypers.num_tree;
 
     if((i + 1) % opts.num_print == 0) {
@@ -1027,7 +1027,7 @@ arma::sp_mat get_sigma_inv(Hypers& hypers)
 
     
   double P = Omega.n_rows;
-  for(sp_mat::iterator it = Omega.begin(); it != Graph.end() ++it) {
+  for(sp_mat::iterator it = Omega.begin(); it != hypers.Graph.end(); ++it) {
 
     int row = it.row();
     int col = it.col();
@@ -1042,7 +1042,7 @@ arma::sp_mat get_sigma_inv(Hypers& hypers)
   }
 
   sp_mat Sigma_inv = -Omega;
-  vec row_sums = sum(Omega,1);
+  sp_vec row_sums = sum(Omega,1);
   for(int i = 0; i < Sigma_inv.n_rows; i++)
     Sigma_inv(i,i) = 1 + row_sums(i);
 
@@ -1077,14 +1077,15 @@ double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
 
 }
 
-void UpdateS(std::vector<Node*> forest, Hypers& hypers) {
+void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   int P = hypers.num_groups;
   int L = 50;
   vec epsilon = 0.2 * ones<vec>(P);
-  vec counts = conv_to<vec>(get_var_counts(forest, hypers));
+  vec counts = conv_to<vec>::from(get_var_counts(forest, hypers));
   vec s_hat = (counts + 1.0/P) / sum(counts + 1.0/P);
   double total_counts = sum(counts);
+  double tau = hypers.tau;
 
   // Get the graph
   arma::sp_mat Sigma_inv = get_sigma_inv(hypers);
@@ -1092,7 +1093,7 @@ void UpdateS(std::vector<Node*> forest, Hypers& hypers) {
   // Get appropriate scales for the HMC using heuristic from Neal's dissertation
   for(int p = 0; p < P; p++) {
     epsilon(p) = epsilon(p) *
-      (total_counts * s_hat % (1.0 - s_hat) + Sigma_inv(p,p) * tau);
+      (total_counts * s_hat(p) * (1.0 - s_hat(p)) + Sigma_inv(p,p) * tau);
   }
   
   // Doing HMC: basically just copies Radford Neal's code
@@ -1102,7 +1103,7 @@ void UpdateS(std::vector<Node*> forest, Hypers& hypers) {
   p = p - 0.5 * epsilon % calc_grad_logit(q, counts, Sigma_inv, tau);
   for(int i = 0; i < L; i++) {
     q = q + epsilon % p;
-    if(i != L) p = p - epsilon % grad_U(q, counts, Sigma_inv, tau);
+    if(i != L) p = p - epsilon % calc_grad_logit(q, counts, Sigma_inv, tau);
   }
   p = p - 0.5 * epsilon % calc_grad_logit(q,counts,Sigma_inv, tau);
   p = -p;
@@ -1112,7 +1113,10 @@ void UpdateS(std::vector<Node*> forest, Hypers& hypers) {
   double proposed_K = 0.5 * dot(p,p);
   if(log(unif_rand()) < current_U - proposed_U + current_K - proposed_K) {
     hypers.zeta = q;
+    hypers.logs = q - log_sum_exp(q);
+    hypers.s = exp(hypers.logs);
   }
+
 
   // Update Tau: This updates tau with a flat prior, probably not ideal
   hypers.tau = UpdateTau(hypers.zeta, Sigma_inv);

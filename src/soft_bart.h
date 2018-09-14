@@ -282,6 +282,15 @@ double tree_loglik(Node* node, int node_depth, double gamma, double beta);
 Node* rand(std::vector<Node*> ngb);
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
 
+
+// For Graphical Laplacian
+arma::sp_mat get_sigma_inv(Hypers& hypers);
+double calc_U_logit(const arma::vec& zeta, const arma::vec& counts,
+                    const arma::sp_mat& Sigma_inv, double tau);
+arma::vec calc_grad_logit(const arma::vec& zeta, const arma::vec& counts,
+                          const arma::sp_mat& Sigma_inv, double tau);
+double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv);
+
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
            double new_to_old, double old_to_new);
