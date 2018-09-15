@@ -84,7 +84,6 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
   out.logs = log(out.s);
   out.zeta = zeros<vec>(out.num_groups);
-  // out.tau = 1.0/10.0;
   out.tau = 1.0;
   out.Graph = Graph;
   out.graph_laplacian = graph_laplacian;
@@ -486,6 +485,8 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       // Rcout << "Iterating Gibbs\n";
       IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
     }
+    if(i > opts.num_burn/2 && i <= opts.num_burn/2 + 1)
+      UpdateSOld(forest, hypers);
     else {
       IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
     }
@@ -1051,26 +1052,34 @@ arma::sp_mat get_sigma_inv(Hypers& hypers)
 
 }
 double calc_U_logit(const arma::vec& zeta, const arma::vec& counts,
-                    const arma::sp_mat& Sigma_inv, double tau) {
+                    const arma::sp_mat& Sigma_inv, double tau, double phi) {
 
   double loglik = dot(zeta, counts);
   loglik += -sum(counts) * log_sum_exp(zeta);
   loglik += -0.5 * tau * dot(zeta, Sigma_inv * zeta);
+  // double loglik = -0.5 * tau * dot(zeta, Sigma_inv * zeta);
+  // loglik -= phi * sum(exp(zeta));
+  // loglik += dot(counts, zeta);
 
   return -loglik;
 
 }
 arma::vec calc_grad_logit(const arma::vec& zeta, const arma::vec& counts,
-                          const arma::sp_mat& Sigma_inv, double tau)
+                          const arma::sp_mat& Sigma_inv, double tau, double phi)
 {
   vec s = exp(zeta - log_sum_exp(zeta));
   vec score = counts - sum(counts) * s - tau * Sigma_inv * zeta;
   return -score;
+
+  // vec score = counts - phi * exp(zeta) - tau * Sigma_inv * zeta;
+
 }
 double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
 
-  double shape = 0.5 * (zeta.size() - 1);
-  double rate = 0.5 * dot(zeta, Sigma_inv * zeta);
+  double shape = 0.5 * (zeta.size()) + 0.5;
+  double rate = 0.5 * dot(zeta, Sigma_inv * zeta) + 0.5;
+  // double shape = 0.5 * (zeta.size() - 1.0);
+  // double rate = 0.5 * dot(zeta, Sigma_inv * zeta);
   double scale = 1.0 / rate;
   double tau = R::rgamma(shape, scale);
 
@@ -1081,11 +1090,13 @@ double UpdateTau(const arma::vec& zeta, const arma::sp_mat& Sigma_inv) {
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   int P = hypers.num_groups;
-  int L = 50;
-  vec epsilon = 0.5 * ones<vec>(P);
+  int L = 100;
+  vec epsilon = zeros<vec>(P);
+
   vec counts = conv_to<vec>::from(get_var_counts(forest, hypers));
   vec s_hat = (counts + 1.0/P) / sum(counts + 1.0/P);
   double total_counts = sum(counts);
+  double phi = R::rgamma(total_counts, 1.0/sum(exp(hypers.zeta)));
   double tau = hypers.tau;
 
   // Get the graph
@@ -1093,25 +1104,24 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   // Get appropriate scales for the HMC using heuristic from Neal's dissertation
   for(int p = 0; p < P; p++) {
-    epsilon(p) = epsilon(p) *
-      // pow(total_counts * s_hat(p) * (1.0 - s_hat(p)) + Sigma_inv(p,p) * tau, -0.5);
-      pow(total_counts * 0.25 + Sigma_inv(p,p) * tau, -0.5);
+    // epsilon(p) = 0.1 * pow(total_counts * s_hat(p) * (1 - s_hat(p)) + tau * Sigma_inv(p,p), -0.5);
+    epsilon(p) = 0.2 * pow(0.25 * total_counts + tau * Sigma_inv(p,p), -0.5);
   }
   
   // Doing HMC: basically just copies Radford Neal's code
   vec q = hypers.zeta;
   vec p = zeros<vec>(P); for(int i = 0; i < P; i++) p(i) = norm_rand();
   vec current_p = p;
-  p = p - 0.5 * epsilon % calc_grad_logit(q, counts, Sigma_inv, tau);
+  p = p - 0.5 * epsilon % calc_grad_logit(q, counts, Sigma_inv, tau, phi);
   for(int i = 0; i < L; i++) {
     q = q + epsilon % p;
-    if(i != L) p = p - epsilon % calc_grad_logit(q, counts, Sigma_inv, tau);
+    if(i < L - 1) p = p - epsilon % calc_grad_logit(q, counts, Sigma_inv, tau, phi);
   }
-  p = p - 0.5 * epsilon % calc_grad_logit(q,counts,Sigma_inv, tau);
+  p = p - 0.5 * epsilon % calc_grad_logit(q,counts,Sigma_inv, tau, phi);
   p = -p;
-  double current_U = calc_U_logit(hypers.zeta, counts, Sigma_inv, tau);
+  double current_U = calc_U_logit(hypers.zeta, counts, Sigma_inv, tau, phi);
   double current_K = 0.5 * dot(current_p, current_p);
-  double proposed_U = calc_U_logit(q, counts, Sigma_inv, tau);
+  double proposed_U = calc_U_logit(q, counts, Sigma_inv, tau, phi);
   double proposed_K = 0.5 * dot(p,p);
   if(log(unif_rand()) < current_U - proposed_U + current_K - proposed_K) {
     hypers.zeta = q;
@@ -1122,6 +1132,18 @@ void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
 
   // Update Tau: This updates tau with a flat prior, probably not ideal
   hypers.tau = UpdateTau(hypers.zeta, Sigma_inv);
+  // hypers.tau = hypers.tau * 0.9995396;
+
+}
+
+void UpdateSOld(std::vector<Node*>& forest, Hypers& hypers) {
+
+  int P = hypers.num_groups;
+  vec counts = conv_to<vec>::from(get_var_counts(forest, hypers));
+  for(int p = 0; p < P; p++)
+    hypers.zeta(p) = rlgam(counts(p) + 0.5);
+  hypers.logs = hypers.zeta - log_sum_exp(hypers.zeta);
+  hypers.s = exp(hypers.logs);
 
 }
 
