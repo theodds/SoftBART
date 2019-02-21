@@ -1367,6 +1367,7 @@ arma::vec update_log_xi(arma::mat log_z, double alpha, double beta){
       B_hat = beta + (A_hat - alpha) / xi_hat + K * Rf_digamma(xi_hat) - R(j); 
     }
     xi(j) = rlgam(A_hat) - log(B_hat);
+    if(std::isnan(xi(j))) xi(j) = -1.0e20;
   }
     
   return xi;
@@ -1389,8 +1390,13 @@ void UpdateAlpha2(Hypers& hypers) {
   }
 
   vec log_xi = update_log_xi(log_zeta, a, b);
+  // Rcout << log_xi;
 
   hypers.s_0 = exp(log_xi - log_sum_exp(log_xi));
+  for(int p = 0; p < P; p++) {
+    hypers.s_0(p) = hypers.s_0(p) > std::pow(10.0, -16) ? hypers.s_0(p) : std::pow(1.0, -16);
+  }
+  hypers.s_0 = hypers.s_0 / sum(hypers.s_0);
   hypers.alpha = exp(log_sum_exp(log_xi));
 }
 
