@@ -695,7 +695,7 @@ void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
     if(opts.s_burned) {
       UpdateS(forest, hypers);
       UpdateZ(forest, hypers);
-      if(opts.update_alpha) UpdateAlpha2(hypers);
+      if(opts.update_alpha) UpdateAlpha(hypers);
     }
     else {
       UpdateSShared(forest, hypers);
@@ -1378,7 +1378,8 @@ void UpdateAlpha2(Hypers& hypers) {
   uvec unique_z = unique(hypers.z);
   int K = unique_z.size();
   double a = 1.0 / P;
-  double b = 1.0 / 10.0;
+  // double b = 1.0 / 10.0;
+  double b = 10.0;
 
   mat log_zeta = zeros<mat>(K,P);
   for(int k = 0; k < K; k++) {
