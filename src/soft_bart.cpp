@@ -1347,6 +1347,20 @@ void UpdateAlpha(Hypers& hypers) {
   hypers.alpha = slice_sampler(hypers.alpha, my_loglik, 1.0, 0.0, R_PosInf);
 }
 
+// void UpdateAlpha2(Hypers& hypers) {
+//   int P = hypers.s.n_cols;
+//   uvec unique_z = unique(hypers.z);
+//   int K = unique_z.size();
+//   double a = 1.0 / P;
+//   double b = 1.0 / 10.0;
+
+//   mat zeta = zeros<mat>(K,P);
+//   for(int k = 0; k < K; k++) {
+//     zeta.row(k) = hypers.s.row(unique_z(k)) * rgamma(P * a, 1.0 / b);
+//   }
+
+// }
+
 // void UpdateAlpha(Hypers& hypers) {
 //   rho_loglik my_loglik;
 //   uvec unique_z = unique(hypers.z);
