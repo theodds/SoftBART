@@ -1347,19 +1347,48 @@ void UpdateAlpha(Hypers& hypers) {
   hypers.alpha = slice_sampler(hypers.alpha, my_loglik, 1.0, 0.0, R_PosInf);
 }
 
-// void UpdateAlpha2(Hypers& hypers) {
-//   int P = hypers.s.n_cols;
-//   uvec unique_z = unique(hypers.z);
-//   int K = unique_z.size();
-//   double a = 1.0 / P;
-//   double b = 1.0 / 10.0;
+// [[Rcpp::export]]
+arma::vec update_log_xi(arma::mat log_z, double alpha, double beta){
+  
+  double P = log_z.n_cols;
+  double K = log_z.n_rows;
+  int M = 10;
+  
+  vec R = trans(sum(log_z, 0));
+  vec xi(P);
+  
+  for(int j = 0; j < P; j++) {
+    double A_hat = 1.0;
+    double B_hat = 1.0;
+    double xi_hat = A_hat / B_hat;
+    for(int t = 0; t < M; t++) {
+      xi_hat = A_hat / B_hat;
+      A_hat = K * xi_hat * xi_hat * Rf_trigamma(xi_hat) + alpha;
+      B_hat = beta + (A_hat - alpha) / xi_hat + K * Rf_digamma(xi_hat) - R(j); 
+    }
+    xi(j) = rlgam(A_hat) - log(B_hat);
+  }
+    
+  return xi;
+}
 
-//   mat zeta = zeros<mat>(K,P);
-//   for(int k = 0; k < K; k++) {
-//     zeta.row(k) = hypers.s.row(unique_z(k)) * rgamma(P * a, 1.0 / b);
-//   }
+void UpdateAlpha2(Hypers& hypers) {
+  int P = hypers.s.n_cols;
+  uvec unique_z = unique(hypers.z);
+  int K = unique_z.size();
+  double a = 1.0 / P;
+  double b = 1.0 / 10.0;
 
-// }
+  mat log_zeta = zeros<mat>(K,P);
+  for(int k = 0; k < K; k++) {
+    log_zeta.row(k) = hypers.logs.row(unique_z(k)) + rlgam(P * a) - log(b);
+  }
+
+  for(int p = 0; p < P; p++) {
+    vec log_zeta_p = log_zeta.col(p);
+    double log_xi = update_log_xi(log_zeta_p, a, b);
+  }
+}
 
 // void UpdateAlpha(Hypers& hypers) {
 //   rho_loglik my_loglik;
