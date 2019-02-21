@@ -293,6 +293,7 @@ void ComputeZLoglik(Node* tree, Hypers& hypers, arma::vec& logliks);
 void UpdatePi(std::vector<Node*>& forest, Hypers& hypers);
 void UpdateOmega(Hypers& hypers);
 void UpdateAlpha(Hypers& hypers);
+void UpdateAlpha2(Hypers& hypers);
 void UpdateAlphaShared(Hypers& hypers);
 
 // Split merge
