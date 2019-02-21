@@ -1381,13 +1381,16 @@ void UpdateAlpha2(Hypers& hypers) {
 
   mat log_zeta = zeros<mat>(K,P);
   for(int k = 0; k < K; k++) {
-    log_zeta.row(k) = hypers.logs.row(unique_z(k)) + rlgam(P * a) - log(b);
+    double log_v = rlgam(P * a) - log(b);
+    for(int p = 0; p < P; p++) {
+      log_zeta(k,p) = hypers.logs.row(unique_z(k)) + log_v;
+    }
   }
 
-  for(int p = 0; p < P; p++) {
-    vec log_zeta_p = log_zeta.col(p);
-    double log_xi = update_log_xi(log_zeta_p, a, b);
-  }
+  vec log_xi = update_log_xi(log_zeta, a, b);
+
+  hypers.s_0 = exp(log_xi - log_sum_exp(log_xi));
+  hypers.alpha = exp(log_sum_exp(log_xi));
 }
 
 // void UpdateAlpha(Hypers& hypers) {
