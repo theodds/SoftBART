@@ -1,12 +1,13 @@
 Soft Bayesian Sum of Trees Models
 ================
 
-The SoftBart package
---------------------
+## The SoftBart package
 
 This package implements the methodology described in the paper
 
--   Linero, A.R. and Yang, Y. (2017). *Bayesian tree ensembles that adapt to smoothness and sparsity.* (In preapration)
+  - Linero, A.R. and Yang, Y. (2018). *Bayesian tree ensembles that
+    adapt to smoothness and sparsity.* Journal of the Royal Statistical
+    Society, Series B.
 
 ### Installation
 
@@ -17,16 +18,20 @@ library(devtools)
 install_github("theodds/SoftBART")
 ```
 
-Note that if you are on OSX, you may need to first run the following commands from the terminal:
+Note that if you are on OSX, you may need to first run the following
+commands from the
+    terminal:
 
     curl -O http://r.research.att.com/libs/gfortran-4.8.2-darwin13.tar.bz2
     sudo tar fvxz gfortran-4.8.2-darwin13.tar.bz2 -C /
 
 ### Usage
 
-The package is designed to mirror the functionality of the `BayesTree` package. The function `softbart` is the primary function, and is used in essentially the same manner as the `bart` function in `BayesTree`.
+The package is designed to mirror the functionality of the `BayesTree`
+package. The function `softbart` is the primary function, and is used in
+essentially the same manner as the `bart` function in `BayesTree`.
 
-The following is a minimal example on "Friedman's example":
+The following is a minimal example on “Friedman’s example”:
 
 ``` r
 ## Load library
@@ -49,7 +54,7 @@ gen_data <- function(n_train, n_test, P, sigma) {
 }
 
 ## Simiulate dataset
-sim_data <- gen_data(250, 100, 50, 1)
+sim_data <- gen_data(250, 100, 1000, 1)
     
 ## Fit the model
 fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test, 
@@ -75,7 +80,10 @@ rmse(fit$y_hat_train_mean, sim_data$mu)
 
 ### Accessing the model from R
 
-In more complex settings, one may wish to incorporate the SoftBART model as a component within a larger model. In this case, it is possible to construct a SoftBART object within `R` and do a single Gibbs sampling update.
+In more complex settings, one may wish to incorporate the SoftBART model
+as a component within a larger model. In this case, it is possible to
+construct a SoftBART object within `R` and do a single Gibbs sampling
+update.
 
 ``` r
 hypers <- Hypers(sim_data$X, sim_data$Y)
@@ -86,4 +94,16 @@ mu_hat <- forest$do_gibbs(sim_data$X, sim_data$Y, sim_data$X_test, opts$num_burn
 mu_hat <- forest$do_gibbs(sim_data$X, sim_data$Y, sim_data$X_test, opts$num_save)
 ```
 
-The `do_gibbs` function takes as input the data used to do the update, an additional set of points at which to predict, and the number of iterations to run the sampler. By default, the probability vector `s` will not be updated until at least `num_burn / 2` iterations have been run. This can be checked by calling `forest$num_gibbs`. The `s` vector itself can be obtained by calling `forest$get_s()`, and in the future we will add features to deal with other components as well. The code above first burns in and then samples from the posterior, and is essentially equivalent to using `softbart`. **WARNING**: if you are going to do this, you need to preprocess `X` and `X_test` by hand, so that all values lie in \[0,1\]. The `softbart` function, in addition to doing the sampling, also preprocesses `X` and `X_test` by applying a quantile transformation.
+The `do_gibbs` function takes as input the data used to do the update,
+an additional set of points at which to predict, and the number of
+iterations to run the sampler. By default, the probability vector `s`
+will not be updated until at least `num_burn / 2` iterations have been
+run. This can be checked by calling `forest$num_gibbs`. The `s` vector
+itself can be obtained by calling `forest$get_s()`, and in the future we
+will add features to deal with other components as well. The code above
+first burns in and then samples from the posterior, and is essentially
+equivalent to using `softbart`. **WARNING**: if you are going to do
+this, you need to preprocess `X` and `X_test` by hand, so that all
+values lie in \[0,1\]. The `softbart` function, in addition to doing the
+sampling, also preprocesses `X` and `X_test` by applying a quantile
+transformation.
