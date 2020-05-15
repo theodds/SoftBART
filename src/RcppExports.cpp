@@ -84,8 +84,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // SoftBart
-List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double alpha_scale, double alpha_shape_1, double alpha_shape_2, double tau_rate, double num_tree_prob, double temperature, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_alpha, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, bool update_num_tree, arma::vec log_prior);
-RcppExport SEXP _SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP alpha_scaleSEXP, SEXP alpha_shape_1SEXP, SEXP alpha_shape_2SEXP, SEXP tau_rateSEXP, SEXP num_tree_probSEXP, SEXP temperatureSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_alphaSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP update_num_treeSEXP, SEXP log_priorSEXP) {
+List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test, const arma::uvec& group, double alpha, double beta, double gamma, double sigma, double shape, double width, int num_tree, double sigma_hat, double k, double tau_rate, double temperature, int num_burn, int num_thin, int num_save, int num_print, bool update_sigma_mu, bool update_s, bool update_beta, bool update_gamma, bool update_tau, bool update_tau_mean, arma::vec log_prior);
+RcppExport SEXP _SoftBart_SoftBart(SEXP XSEXP, SEXP YSEXP, SEXP X_testSEXP, SEXP groupSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP gammaSEXP, SEXP sigmaSEXP, SEXP shapeSEXP, SEXP widthSEXP, SEXP num_treeSEXP, SEXP sigma_hatSEXP, SEXP kSEXP, SEXP tau_rateSEXP, SEXP temperatureSEXP, SEXP num_burnSEXP, SEXP num_thinSEXP, SEXP num_saveSEXP, SEXP num_printSEXP, SEXP update_sigma_muSEXP, SEXP update_sSEXP, SEXP update_betaSEXP, SEXP update_gammaSEXP, SEXP update_tauSEXP, SEXP update_tau_meanSEXP, SEXP log_priorSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -102,11 +102,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type num_tree(num_treeSEXP);
     Rcpp::traits::input_parameter< double >::type sigma_hat(sigma_hatSEXP);
     Rcpp::traits::input_parameter< double >::type k(kSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha_scale(alpha_scaleSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha_shape_1(alpha_shape_1SEXP);
-    Rcpp::traits::input_parameter< double >::type alpha_shape_2(alpha_shape_2SEXP);
     Rcpp::traits::input_parameter< double >::type tau_rate(tau_rateSEXP);
-    Rcpp::traits::input_parameter< double >::type num_tree_prob(num_tree_probSEXP);
     Rcpp::traits::input_parameter< double >::type temperature(temperatureSEXP);
     Rcpp::traits::input_parameter< int >::type num_burn(num_burnSEXP);
     Rcpp::traits::input_parameter< int >::type num_thin(num_thinSEXP);
@@ -114,14 +110,12 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type num_print(num_printSEXP);
     Rcpp::traits::input_parameter< bool >::type update_sigma_mu(update_sigma_muSEXP);
     Rcpp::traits::input_parameter< bool >::type update_s(update_sSEXP);
-    Rcpp::traits::input_parameter< bool >::type update_alpha(update_alphaSEXP);
     Rcpp::traits::input_parameter< bool >::type update_beta(update_betaSEXP);
     Rcpp::traits::input_parameter< bool >::type update_gamma(update_gammaSEXP);
     Rcpp::traits::input_parameter< bool >::type update_tau(update_tauSEXP);
     Rcpp::traits::input_parameter< bool >::type update_tau_mean(update_tau_meanSEXP);
-    Rcpp::traits::input_parameter< bool >::type update_num_tree(update_num_treeSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type log_prior(log_priorSEXP);
-    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, alpha_scale, alpha_shape_1, alpha_shape_2, tau_rate, num_tree_prob, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_alpha, update_beta, update_gamma, update_tau, update_tau_mean, update_num_tree, log_prior));
+    rcpp_result_gen = Rcpp::wrap(SoftBart(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, tau_rate, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_beta, update_gamma, update_tau, update_tau_mean, log_prior));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -150,7 +144,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
     {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
-    {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 32},
+    {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 26},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},
     {"_rcpp_module_boot_mod_forest", (DL_FUNC) &_rcpp_module_boot_mod_forest, 0},
     {NULL, NULL, 0}

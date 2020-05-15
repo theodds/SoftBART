@@ -6,7 +6,7 @@
 #' @param X NxP matrix of training data covariates.
 #' @param Y Nx1 vector of training data response.
 #' @param group For each column of X, gives the associated group
-#' @param alpha Positive constant controlling the sparsity level
+#' @param alpha Parameter of the Dirichlet parameter of the Gibbs prior
 #' @param beta Parameter penalizing tree depth in the branching process prior
 #' @param gamma Parameter penalizing new nodes in the branching process prior
 #' @param k Related to the signal-to-noise ratio, sigma_mu = 0.5 / (sqrt(num_tree) * k). BART defaults to k = 2.
@@ -14,20 +14,15 @@
 #' @param shape Shape parameter for gating probabilities
 #' @param width Bandwidth of gating probabilities
 #' @param num_tree Number of trees in the ensemble
-#' @param alpha_scale Scale of the prior for alpha; if not provided, defaults to P
-#' @param alpha_shape_1 Shape parameter for prior on alpha; if not provided, defaults to 0.5
-#' @param alpha_shape_2 Shape parameter for prior on alpha; if not provided, defaults to 1.0
-#' @param num_tree_prob Parameter for geometric prior on number of tree
+#' @param tau_rate Bandwidth prior rate, such that tau ~ Exponential(tau_rate)
+#' @param temperature Inverse of the temperature for tempered likelihood methods; set = 1 unless you know what you are doing
+#' @param log_prior Log-prior on the number of allowed predictors for the Gibbs prior
+#' @param zeta If log_prior is not specified, we set the prior proportional to D^-zeta. Defaults to zeta = 0 for a uniform prior on the model size.
 #'
 #' @return Returns a list containing the function arguments.
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
-                   alpha_scale = NULL, alpha_shape_1 = 0.5,
-                   alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
-                   temperature = 1.0, log_prior = NULL, zeta = 0) {
-
-  if(is.null(alpha_scale)) alpha_scale <- ncol(X)
-  if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
+                   tau_rate = 10, temperature = 1.0, log_prior = NULL, zeta = 0) {
 
   out                                  <- list()
 
@@ -52,21 +47,17 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
   out$sigma                            <- sigma_hat
   out$sigma_hat                        <- sigma_hat
 
-  out$alpha_scale                      <- alpha_scale
-  out$alpha_shape_1                    <- alpha_shape_1
-  out$alpha_shape_2                    <- alpha_shape_2
   out$tau_rate                         <- tau_rate
-  out$num_tree_prob                    <- num_tree_prob
   out$temperature                      <- temperature
 
   if(is.null(log_prior)) {
-    P <- ncol(X)
+    P <- length(out$group)
     prior <- 1 / (1:P)^zeta
     prior <- prior / sum(prior)
     log_prior <- log(prior)
   }
   
-  stopifnot(length(log_prior) == ncol(X))
+  stopifnot(length(log_prior) == length(out$group))
   out$log_prior <- log_prior
   
   return(out)
@@ -83,7 +74,6 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @param num_print Interval for how often to print the chain's progress
 #' @param update_sigma_mu If true, sigma_mu/k are updated, with a half-Cauchy prior on sigma_mu centered at the initial guess
 #' @param update_s If true, s is updated using the Dirichlet prior.
-#' @param update_alpha If true, alpha is updated using a scaled beta prime prior
 #' @param update_beta If true, beta is updated using a Normal(0,2^2) prior
 #' @param update_gamma If true, gamma is updated using a Uniform(0.5, 1) prior
 #' @param update_tau If true, tau is updated for each tree
@@ -91,7 +81,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #'
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
-                 update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
+                 update_sigma_mu = TRUE, update_s = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
                  update_tau_mean = FALSE) {
   out <- list()
@@ -101,13 +91,10 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$num_print       <- num_print
   out$update_sigma_mu <- update_sigma_mu
   out$update_s         <- update_s
-  out$update_alpha    <- update_alpha
   out$update_beta     <- update_beta
   out$update_gamma    <- update_gamma
   out$update_tau      <- update_tau
   out$update_tau_mean <- update_tau_mean
-  # out$update_num_tree <- update_num_tree
-  out$update_num_tree <- FALSE
 
   return(out)
 
@@ -143,11 +130,13 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item y_hat_test_mean: fit to the testing data, averaged over iterations
 #'   \item sigma: posterior samples of the error standard deviations
 #'   \item sigma_mu: posterior samples of sigma_mu, the standard deviation of the leaf node parameters
-#'   \item s: posterior samples of s
-#'   \item alpha: posterior samples of alpha
+#'   \item var_counts: posterior sample of group counts, used for variable importance
 #'   \item beta: posterior samples of beta
 #'   \item gamma: posterior samples of gamma
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
+#'   \item tau_rate: Posterior samples of tau_rate
+#'   \item loglik_train: Log density evaluated for each observation; can be used with loo package to compute LOO-CV statistics
+#'   \item loglik: Sum of loglik_train for each iteration
 #' }
 softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
@@ -187,11 +176,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$num_tree,
                   hypers$sigma_hat,
                   hypers$k,
-                  hypers$alpha_scale,
-                  hypers$alpha_shape_1,
-                  hypers$alpha_shape_2,
                   hypers$tau_rate,
-                  hypers$num_tree_prob,
                   hypers$temperature,
                   opts$num_burn,
                   opts$num_thin,
@@ -199,12 +184,10 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$num_print,
                   opts$update_sigma_mu,
                   opts$update_s,
-                  opts$update_alpha,
                   opts$update_beta,
                   opts$update_gamma,
                   opts$update_tau,
                   opts$update_tau_mean,
-                  opts$update_num_tree,
                   hypers$log_prior)
 
 
@@ -225,37 +208,6 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
   return(fit)
 
-}
-
-TreeSelect <- function(X,Y, X_test, hypers = NULL, tree_start = 25, opts = Opts()) {
-
-  if(is.null(hypers)){
-    hypers <- Hypers(X,Y)
-  }
-
-  best <- 0;
-
-  hypers$num_tree <- tree_start
-  fit <- softbart(X,Y,X_test,hypers, opts)
-  best <- mean(fit$loglik) + hypers$num_tree * log(1 - hypers$num_tree_prob)
-
-  while(TRUE) {
-    tree_old <- hypers$num_tree
-    tree_new <- 2 * tree_old
-    hypers$num_tree <- tree_new
-    fit <- softbart(X,Y,X,hypers, opts)
-    gof <- mean(fit$loglik) + hypers$num_tree * log(1 - hypers$num_tree_prob)
-    if(gof < best) {
-      break
-    }
-    best <- gof
-  }
-
-  hypers$num_tree <- tree_old
-  hypers$temperature <- 1.0
-  fit <- softbart(X,Y,X_test,hypers, opts)
-
-  return(list(num_tree = tree_old, fit = fit))
 }
 
 GetSigma <- function(X,Y) {

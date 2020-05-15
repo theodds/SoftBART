@@ -13,7 +13,7 @@ Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opt
     // trees[i]->GenTree(hypers);
   }
   num_gibbs = 0;
-  tree_counts = zeros<umat>(hypers.s.size(), hypers.num_tree);
+  tree_counts = zeros<umat>(hypers.split_hypers.counts.size(), hypers.num_tree);
 }
 
 Forest::~Forest() {
@@ -39,9 +39,9 @@ Node::Node() {
 }
 
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
-              bool update_sigma_mu, bool update_s, bool update_alpha,
+              bool update_sigma_mu, bool update_s,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree) {
+              bool update_tau_mean) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -50,12 +50,10 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.num_print = num_print;
   out.update_sigma_mu = update_sigma_mu;
   out.update_s = update_s;
-  out.update_alpha = update_alpha;
   out.update_beta = update_beta;
   out.update_gamma = update_gamma;
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
-  out.update_num_tree = update_num_tree;
 
   return out;
 
@@ -64,23 +62,19 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
 Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
                   double alpha, double beta,
                   double gamma, double k, double width, double shape,
-                  int num_tree, double alpha_scale, double alpha_shape_1,
-                  double alpha_shape_2, double tau_rate, double num_tree_prob,
-                  double temperature, arma::vec log_prior) {
-
-  int GRID_SIZE = 1000;
+                  int num_tree, double tau_rate, double temperature,
+                  arma::vec log_prior) {
 
   Hypers out;
 
+  out.split_hypers.LoadGroups(group);
   out.split_hypers.log_V.clear();
-  out.split_hypers.counts = arma::zeros<arma::sp_umat>(X.n_cols,1);
   out.split_hypers.use_counts = false;
   out.split_hypers.dirichlet_mass = alpha;
   out.split_hypers.log_mass = log(alpha);
   out.split_hypers.log_prior = log_prior;
 
 
-  out.alpha = alpha;
   out.beta = beta;
   out.gamma = gamma;
   out.sigma = sigma_hat;
@@ -89,58 +83,37 @@ Hypers InitHypers(const mat& X, const uvec& group, double sigma_hat,
   out.width = width;
   out.num_tree = num_tree;
 
-  out.num_groups = group.max() + 1;
-  out.s = ones<vec>(out.num_groups) / ((double)(out.num_groups));
-  out.logs = log(out.s);
-  out.logZ = out.logs;
-
   out.sigma_hat = sigma_hat;
   out.sigma_mu_hat = out.sigma_mu;
 
-  out.alpha_scale = alpha_scale;
-  out.alpha_shape_1 = alpha_shape_1;
-  out.alpha_shape_2 = alpha_shape_2;
   out.tau_rate = tau_rate;
-  out.num_tree_prob = num_tree_prob;
   out.temperature = temperature;
-
-  out.group = group;
-
-  // Create mapping of group to variables
-  out.group_to_vars.resize(out.s.size());
-  for(int i = 0; i < out.s.size(); i++) {
-    out.group_to_vars[i].resize(0);
-  }
-  int P = group.size();
-  for(int p = 0; p < P; p++) {
-    int idx = group(p);
-    out.group_to_vars[idx].push_back(p);
-  }
-
-  out.rho_propose = zeros<vec>(GRID_SIZE - 1);
-  for(int i = 0; i < GRID_SIZE - 1; i++) {
-    out.rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
-  }
 
   return out;
 }
 
 int ProbHypers::ResampleVar(int var) {
-  counts(var) -= 1;
+
+  counts(group(var)) -= 1;
   int sampled_var = SampleVar();
-  counts(sampled_var) += 1;
+  counts(group(sampled_var)) += 1;
   return sampled_var;
 }
 
 void ProbHypers::SwitchVar(int v_old, int v_new) {
-  counts(v_old) -= 1;
-  counts(v_new) += 1;
+  counts(group(v_old)) -= 1;
+  counts(group(v_new)) += 1;
 }
 
 int ProbHypers::SampleVar() {
 
+  int group_idx = counts.size() - 1;
+  int var_idx;
+
   if(!use_counts) {
-    return sample_class(counts.size());
+    group_idx = sample_class(counts.size());
+    var_idx =  sample_class(group_to_vars[group_idx].size());
+    return group_to_vars[group_idx][var_idx];
   }
 
   double U = R::unif_rand();
@@ -164,10 +137,15 @@ int ProbHypers::SampleVar() {
       tmp += log(dirichlet_mass + counts(k));
       cumsum += exp(tmp);
     }
-    if(U < cumsum) return k;
+    if(U < cumsum) {
+      group_idx = k;
+      break;
+    }
   }
-  Rcout << "ERROR: overflowed the probability";
-  return K - 1;
+
+  var_idx = sample_class(group_to_vars[group_idx].size());
+  return group_to_vars[group_idx][var_idx];
+
 }
 
 void Node::Root(Hypers& hypers) {
@@ -226,7 +204,7 @@ void Node::BirthLeaves(Hypers& hypers) {
   if(is_leaf) {
     AddLeaves();
     var = hypers.split_hypers.SampleVar();
-    hypers.split_hypers.counts(var) += 1;
+    hypers.split_hypers.counts(hypers.split_hypers.group(var)) += 1;
     GetLimits();
     val = (upper - lower) * unif_rand() + lower;
   }
@@ -444,7 +422,7 @@ bool is_left(Node* n) {
 }
 
 void Node::DeleteLeaves(Hypers& hypers) {
-  hypers.split_hypers.counts(var) -= 1;
+  hypers.split_hypers.counts(hypers.split_hypers.group(var)) -= 1;
   delete left;
   delete right;
   left = this;
@@ -531,9 +509,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     }
 
     if((i+1) % opts.num_print == 0) {
-      // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
       Rcout << "Finishing warmup " << i + 1
-            // << " tau_rate = " << hypers.tau_rate
                << " Number of branches = " << sum(hypers.split_hypers.counts)
             << "\n"
       
@@ -547,24 +523,17 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   mat Y_hat_test = zeros<mat>(opts.num_save, X_test.n_rows);
   vec sigma = zeros<vec>(opts.num_save);
   vec sigma_mu = zeros<vec>(opts.num_save);
-  vec alpha = zeros<vec>(opts.num_save);
   vec beta = zeros<vec>(opts.num_save);
   vec gamma = zeros<vec>(opts.num_save);
-  mat s = zeros<mat>(opts.num_save, hypers.s.size());
-  // mat logZ = zeros<mat>(opts.num_save, hypers.s.size());
-  vec a_hat = zeros<vec>(opts.num_save);
-  vec b_hat = zeros<vec>(opts.num_save);
-  vec mean_log_Z = zeros<vec>(opts.num_save);
-  umat var_counts = zeros<umat>(opts.num_save, hypers.s.size());
+  umat var_counts = zeros<umat>(opts.num_save, hypers.split_hypers.counts.size());
   vec tau_rate = zeros<vec>(opts.num_save);
-  uvec num_tree = zeros<uvec>(opts.num_save);
   vec loglik = zeros<vec>(opts.num_save);
   mat loglik_train = zeros<mat>(opts.num_save, Y_hat.size());
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
-      IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+      IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
     }
 
     // Save stuff
@@ -572,23 +541,17 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     Y_hat_test.row(i) = trans(predict(forest, X_test, hypers));
     sigma(i) = hypers.sigma;
     sigma_mu(i) = hypers.sigma_mu;
-    s.row(i) = trans(hypers.s);
-    // logZ.row(i) = trans(hypers.logZ);
-    a_hat(i) = hypers.a_hat;
-    b_hat(i) = hypers.b_hat;
-    mean_log_Z(i) = hypers.mean_log_Z;
     var_counts.row(i) = trans(get_var_counts(forest, hypers));
-    alpha(i) = hypers.alpha;
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
     loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
     loglik(i) = sum(loglik_train.row(i));
-    num_tree(i) = hypers.num_tree;
 
     if((i + 1) % opts.num_print == 0) {
-      // Rcout << "Finishing save " << i + 1 << ": tau = " << hypers.width << "\n";
-      Rcout << "Finishing save " << i + 1 << "\n";
+      Rcout << "Finishing save " << i + 1 << " Number of branches = "
+            << sum(hypers.split_hypers.counts)
+            << "\n";
     }
 
   }
@@ -604,32 +567,16 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["y_hat_test"] = Y_hat_test;
   out["sigma"] = sigma;
   out["sigma_mu"] = sigma_mu;
-  out["s"] = s;
-  // out["logZ"] = logZ;
-  out["a_hat"] = a_hat;
-  out["b_hat"] = b_hat;
-  out["mean_log_Z"] = mean_log_Z;
-  out["alpha"] = alpha;
   out["beta"] = beta;
   out["gamma"] = gamma;
   out["var_counts"] = var_counts;
   out["tau_rate"] = tau_rate;
-  out["num_tree"] = num_tree;
   out["loglik"] = loglik;
   out["loglik_train"] = loglik_train;
 
 
   return out;
 
-}
-
-void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
-                       Hypers& hypers, const arma::mat& X, const arma::vec& Y,
-                       const Opts& opts) {
-  IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
-  if(opts.update_s) UpdateS(forest, hypers);
-  if(opts.update_alpha) hypers.UpdateAlpha();
-  if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
@@ -669,14 +616,10 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
       forest[t] = draw_prior(forest[t], X, res, hypers);
     }
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
-      // Rcout << "BD step";
       birth_death(forest[t], X, res, hypers);
-      // Rcout << "Done";
     }
     else {
-      // Rcout << "Change step";
       perturb_decision_rule(forest[t], X, res, hypers);
-      // Rcout << "Done";
     }
     if(opts.update_tau) forest[t]->UpdateTau(res, X, hypers);
     forest[t]->UpdateMu(res, X, hypers);
@@ -1018,7 +961,7 @@ void not_grand_branches(std::vector<Node*>& ngb, Node* node) {
 }
 
 arma::uvec get_var_counts(std::vector<Node*>& forest, const Hypers& hypers) {
-  arma::uvec counts = zeros<uvec>(hypers.s.size());
+  arma::uvec counts = zeros<uvec>(hypers.split_hypers.counts.size());
   int num_tree = forest.size();
   for(int t = 0; t < num_tree; t++) {
     get_var_counts(counts, forest[t], hypers);
@@ -1028,33 +971,13 @@ arma::uvec get_var_counts(std::vector<Node*>& forest, const Hypers& hypers) {
 
 void get_var_counts(arma::uvec& counts, Node* node, const Hypers& hypers) {
   if(!node->is_leaf) {
-    int group_idx = hypers.group(node->var);
+    int group_idx = hypers.split_hypers.group(node->var);
     counts(group_idx) = counts(group_idx) + 1;
     get_var_counts(counts, node->left, hypers);
     get_var_counts(counts, node->right, hypers);
   }
 }
 
-/*Note: Because the shape of the Dirichlet will mostly be small, we sample from
-  the Dirichlet distribution by sampling log-gamma random variables using the
-  technique of Liu, Martin, and Syring (2017+) and normalizing using the
-  log-sum-exp trick */
-void UpdateS(std::vector<Node*>& forest, Hypers& hypers) {
-
-  // Get shape vector
-  vec shape_up = hypers.alpha / ((double)hypers.s.size()) * ones<vec>(hypers.s.size());
-  shape_up = shape_up + get_var_counts(forest, hypers);
-
-  // Sample unnormalized s on the log scale
-  for(int i = 0; i < shape_up.size(); i++) {
-    hypers.logZ(i) = rlgam(shape_up(i));
-  }
-  // Normalize s on the log scale, then exponentiate
-  hypers.logs = hypers.logZ - log_sum_exp(hypers.logZ);
-  hypers.s = exp(hypers.logs);
-  hypers.logZ = hypers.logs + rlgam(hypers.alpha);
-
-}
 
 // [[Rcpp::export]]
 double rlgam(double shape) {
@@ -1094,129 +1017,9 @@ arma::vec rdirichlet(const arma::vec& shape) {
   return out;
 }
 
-double alpha_to_rho(double alpha, double scale) {
-  return alpha / (alpha + scale);
-}
-
-double rho_to_alpha(double rho, double scale) {
-  return scale * rho / (1.0 - rho);
-}
-
 double logpdf_beta(double x, double a, double b) {
   return (a-1.0) * log(x) + (b-1.0) * log(1 - x) - Rf_lbeta(a,b);
 }
-
-// NOTE: the log-likelihood here is -n Gam(alpha/n) + alpha * mean_log_Z + (shape - 1) * log(alpha) - rate * alpha
-void Hypers::UpdateAlpha() {
-
-
-  // Get the Gamma approximation
-
-  double n = logZ.size();
-  double R = mean(logZ); mean_log_Z = R;
-  double alpha_hat = exp(log_sum_exp(logZ));
-  a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
-  b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
-    Rf_digamma(alpha_hat / n) - R;
-  int M = 10;
-  for(int i = 0; i < M; i++) {
-    alpha_hat = a_hat / b_hat;
-    a_hat = alpha_shape_1 + alpha_hat * alpha_hat * Rf_trigamma(alpha_hat / n) / n;
-    b_hat = 1.0 / alpha_scale + (a_hat - alpha_shape_1) / alpha_hat +
-      Rf_digamma(alpha_hat / n) - R;
-  }
-  double A = a_hat * .75;
-  double B = b_hat * .75;
-
-  // double n = logZ.size();
-  // double R = sum(logZ);
-  // double alpha_hat = exp(log_sum_exp(logZ)) / n;
-  // a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-  // b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
-  // int M = 10;
-  // for(int i = 0; i < M; i++) {
-  //   alpha_hat = a_hat / b_hat;
-  //   a_hat = 1.0 + alpha_hat * alpha_hat * n * Rf_trigamma(alpha_hat);
-  //   b_hat = (a_hat - 1.0) / alpha_hat + n * Rf_digamma(alpha_hat) - R;
-  // }
-  // a_hat = a_hat / 1.3;
-  // b_hat = b_hat / 1.3;
-
-  // Sample from the gamma approximation
-  double alpha_prop = R::rgamma(A, 1.0 / B);
-
-
-  // Compute logliks
-  double loglik_new = - n * R::lgammafn(alpha_prop / n) + alpha_prop * R +
-    (alpha_shape_1 - 1.0) * log(alpha_prop) - alpha_prop / alpha_scale +
-    R::dgamma(alpha, A, 1.0 / B, 1);
-  double loglik_old = -n * R::lgammafn(alpha / n) + alpha * R +
-    (alpha_shape_1 - 1.0) * log(alpha) - alpha / alpha_scale +
-    R::dgamma(alpha_prop, A, 1.0 / B, 1);
-
-  // Accept or reject
-  if(log(unif_rand()) < loglik_new - loglik_old) {
-    alpha = alpha_prop;
-  }
-
-  // arma::vec logliks = zeros<vec>(rho_propose.size());
-  // rho_loglik loglik;
-  // loglik.mean_log_s = mean(logs);
-  // loglik.p = (double)s.size();
-  // loglik.alpha_scale = alpha_scale;
-  // loglik.alpha_shape_1 = alpha_shape_1;
-  // loglik.alpha_shape_2 = alpha_shape_2;
-
-  // for(int i = 0; i < rho_propose.size(); i++) {
-  //   logliks(i) = loglik(rho_propose(i));
-  // }
-
-  // logliks = exp(logliks - log_sum_exp(logliks));
-  // double rho_up = rho_propose(sample_class(logliks));
-  // alpha = rho_to_alpha(rho_up, alpha_scale);
-
-}
-
-// void Hypers::UpdateAlpha() {
-
-//   double rho = alpha_to_rho(alpha, alpha_scale);
-//   double psi = mean(log(s));
-//   double p = (double)s.size();
-
-//   double loglik = alpha * psi + Rf_lgammafn(alpha) - p * Rf_lgammafn(alpha / p) +
-//     logpdf_beta(rho, alpha_shape_1, alpha_shape_2);
-
-//   // 50 MH proposals
-//   for(int i = 0; i < 50; i++) {
-//     double rho_propose = Rf_rbeta(alpha_shape_1, alpha_shape_2);
-//     double alpha_propose = rho_to_alpha(rho_propose, alpha_scale);
-
-//     double loglik_propose = alpha_propose * psi + Rf_lgammafn(alpha_propose) -
-//       p * Rf_lgammafn(alpha_propose/p) +
-//       logpdf_beta(rho_propose, alpha_shape_1, alpha_shape_2);
-
-//     if(log(unif_rand()) < loglik_propose - loglik) {
-//       alpha = alpha_propose;
-//       rho = rho_propose;
-//       loglik = loglik_propose;
-//     }
-//   }
-// }
-
-// void Hypers::UpdateAlpha() {
-
-//   rho_loglik loglik;
-//   loglik.mean_log_s = mean(logs);
-//   loglik.p = (double)s.size();
-//   loglik.alpha_scale = alpha_scale;
-//   loglik.alpha_shape_1 = alpha_shape_1;
-//   loglik.alpha_shape_2 = alpha_shape_2;
-
-//   double rho = alpha_to_rho(alpha, alpha_scale);
-//   rho = slice_sampler(rho, loglik, 0.1, 0.0 + exp(-10.0), 1.0);
-//   alpha = rho_to_alpha(rho, alpha_scale);
-// }
-
 
 double growth_prior(int node_depth, double gamma, double beta) {
   return gamma * pow(1.0 + node_depth, -beta);
@@ -1278,13 +1081,6 @@ Node* rand(std::vector<Node*> ngb) {
   return ngb[i];
 }
 
-// double loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
-//   vec res = Y - Y_hat;
-//   double out = -0.5 * Y.size() * log(M_2_PI * pow(hypers.sigma,2.0)) -
-//     dot(res, res) * 0.5 / pow(hypers.sigma,2.0);
-//   return out;
-// }
-
 arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
   vec res = Y - Y_hat;
   vec out = zeros<vec>(Y.size());
@@ -1299,24 +1095,21 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               const arma::uvec& group,
               double alpha, double beta, double gamma, double sigma,
               double shape, double width, int num_tree,
-              double sigma_hat, double k, double alpha_scale,
-              double alpha_shape_1, double alpha_shape_2, double tau_rate,
-              double num_tree_prob,
+              double sigma_hat, double k, double tau_rate,
               double temperature,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
-              bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean, bool update_num_tree,
+              bool update_s, bool update_beta, bool update_gamma,
+              bool update_tau, bool update_tau_mean,
               arma::vec log_prior) {
 
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
-                       update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean, update_num_tree);
+                       update_s, update_beta, update_gamma,
+                       update_tau, update_tau_mean);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
-                             shape, num_tree, alpha_scale, alpha_shape_1,
-                             alpha_shape_2, tau_rate, num_tree_prob, temperature, log_prior);
+                             shape, num_tree, tau_rate, temperature, log_prior);
 
   // Rcout << "Doing soft_bart\n";
   return do_soft_bart(X,Y,X_test,hypers,opts);
@@ -1377,13 +1170,11 @@ void Node::UpdateTau(const arma::vec& Y,
 }
 
 Hypers::Hypers() {
-  alpha = 1.0;
   beta = 2.0;
   gamma = 0.95;
 }
 
 Hypers::Hypers(Rcpp::List hypers) {
-  alpha = hypers["alpha"];
   beta = hypers["beta"];
   gamma = hypers["gamma"];
   sigma = hypers["sigma"];
@@ -1393,45 +1184,18 @@ Hypers::Hypers(Rcpp::List hypers) {
   width = hypers["width"];
   num_tree = hypers["num_tree"];
   sigma_hat = hypers["sigma_hat"];
-  alpha_scale = hypers["alpha_scale"];
-  alpha_shape_1 = hypers["alpha_shape_1"];
-  alpha_shape_2 = hypers["alpha_shape_2"];
   tau_rate = hypers["tau_rate"];
-  num_tree_prob = hypers["num_tree_prob"];
   temperature = hypers["temperature"];
 
   // Deal with group and num_group
-  group = as<arma::uvec>(hypers["group"]);
-  num_groups = group.max() + 1;
-
-
-  // Deal with other stuff
-
-  s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
-  logs = log(s);
-  logZ = logs;
-
-  group_to_vars.resize(s.size());
-  for(int i = 0; i < s.size(); i++) {
-   group_to_vars[i].resize(0);
-  }
-  int P = group.size();
-  for(int p = 0; p < P; p++) {
-   int idx = group(p);
-   group_to_vars[idx].push_back(p);
-  }
-
-  int GRID_SIZE = 1000;
-
-  rho_propose = arma::zeros<arma::vec>(GRID_SIZE - 1);
-  for(int i = 0; i < GRID_SIZE - 1; i++) {
-    rho_propose(i) = (double)(i+1) / (double)(GRID_SIZE);
-  }
+  arma::uvec group = as<arma::uvec>(hypers["group"]);
+  int num_groups = group.max() + 1;
+  split_hypers.LoadGroups(group);
 
   // Gibbs Prior
   split_hypers.log_V.clear();
-  split_hypers.counts = zeros<uvec>(num_groups);
   split_hypers.use_counts = false;
+  double alpha = hypers["alpha"];
   split_hypers.dirichlet_mass = alpha;
   split_hypers.log_mass = log(alpha);
   split_hypers.log_prior = as<arma::vec>(hypers["log_prior"]);
@@ -1447,8 +1211,6 @@ double logprior_tau(double tau, double tau_rate) {
 double tau_proposal(double tau) {
   double U = 2.0 * unif_rand() - 1;
   return pow(5.0, U) * tau;
-  // double w = 0.2 * unif_rand() - 0.1;
-  // return tau + w;
 }
 
 double Hypers::loglik_tau(double tau,
@@ -1494,178 +1256,33 @@ arma::vec get_tau_vec(const std::vector<Node*>& forest) {
 }
 
 
-// Reversible jump stuff ----
-
-std::vector<Node*> TreeSwap(std::vector<Node*>& forest) {
-  int num_tree = forest.size();
-  int idx_1 = sample_class(num_tree);
-  int idx_2 = sample_class(num_tree);
-
-  std::vector<Node*> new_forest = forest;
-
-  forest[idx_1] = new_forest[idx_2];
-  forest[idx_2] = new_forest[idx_1];
-
-  return forest;
-
-}
-
-std::vector<Node*> TreeSwapLast(std::vector<Node*>& forest) {
-  int num_tree = forest.size();
-  int idx = sample_class(num_tree);
-
-  // Rcout << "\nSelected tree = " << idx << "\n";
-
-  Node* tree_1 = forest[idx];
-  Node* tree_2 = forest[num_tree - 1];
-  forest[num_tree-1] = tree_1;
-  forest[idx] = tree_2;
-
-  return forest;
-
-}
-
-std::vector<Node*> AddTree(std::vector<Node*>& forest,
-                           Hypers& hypers,
-                           const Opts& opts) {
-  std::vector<Node*> new_forest = forest;
-  Node* new_root = new Node;
-  new_root->GenTree(hypers);
-  if(opts.update_tau)
-    new_root->SetTau(Rf_rgamma(1.0, 1.0 / hypers.tau_rate));
-
-  std::vector<Node*> leafs = leaves(new_root);
-  for(int i = 0; i < leafs.size(); i++) {
-    leafs[i]->mu = norm_rand() * hypers.sigma_mu;
-  }
-
-  new_forest.push_back(new_root);
-  return new_forest;
-
-}
-
-std::vector<Node*> DeleteTree(std::vector<Node*>& forest) {
-
-  std::vector<Node*> new_forest = TreeSwapLast(forest);
-  new_forest.pop_back();
-  return new_forest;
-
-}
-
-void update_num_tree(std::vector<Node*>& forest, Hypers& hypers,
-                     const Opts& opts,
-                     const arma::vec& Y, const arma::vec& res,
-                     const arma::mat& X) {
-
-  double add_or_delete = unif_rand();
-  if(add_or_delete <= 0.5 || hypers.num_tree == 1) {
-    // Rcout << "Birth step!";
-    BirthTree(forest, hypers, opts, Y, res, X);
-  }
-  else {
-    // Rcout << "Death step!";
-    DeathTree(forest, hypers, Y, res, X);
-  }
-
-}
-
-double LogLF(const std::vector<Node*>& forest, const Hypers& hypers,
-             const arma::vec& Y, const arma::mat& X) {
-  vec resid = Y - predict(forest, X, hypers);
-  return loglik_normal(resid, hypers.sigma);
-}
-
-double loglik_normal(const arma::vec& resid, const double& sigma) {
-  double N = resid.size();
-  double SSE = dot(resid, resid);
-  return -0.5 * N * log(M_2_PI * pow(sigma, 2)) - 0.5 * SSE / pow(sigma, 2);
-}
-
-void BirthTree(std::vector<Node*>& forest,
-               Hypers& hypers,
-               const Opts& opts,
-               const arma::vec& Y,
-               const arma::vec& res,
-               const arma::mat& X) {
-
-  // Log likelihood of current state
-  // Rcout << "1";
-  double loglik_old = loglik_normal(res, hypers.sigma);
-
-  // Add tree and modify hypers
-  // Rcout << "2";
-  std::vector<Node*> new_forest = AddTree(forest, hypers, opts);
-  // Rcout << "3";
-  RenormAddTree(forest, new_forest, hypers);
-
-  // Calculate new log likelihood
-  // Rcout << "4";
-  double loglik_new = LogLF(new_forest, hypers, Y, X);
-
-  // Do MH
-  // Rcout << "5";
-  double accept_ratio = loglik_new - loglik_old + TPrior(new_forest, hypers) - TPrior(forest, hypers);
-  if(log(unif_rand()) < accept_ratio) {
-    // Rcout << "6";
-    forest = new_forest;
-  }
-  else {
-    // Rcout << "7";
-    UnnormAddTree(forest, new_forest, hypers);
-    // Rcout << "8";
-    delete new_forest.back();
-  }
-
-}
-
-void DeathTree(std::vector<Node*>& forest,
-               Hypers& hypers,
-               const arma::vec& Y,
-               const arma::vec& res,
-               const arma::mat& X) {
-
-  // Log likelihood of current state
-  double loglik_old = loglik_normal(res, hypers.sigma);
-
-  // Delete tree and modify hypers
-  // Rcout << "Delete tree!";
-  std::vector<Node*> new_forest = DeleteTree(forest);
-  // Rcout << "Renorm!";
-  RenormDeleteTree(forest, new_forest, hypers);
-
-  // Calculate new log likelihood
-  double loglik_new = LogLF(new_forest, hypers, Y, X);
-
-  // Do MH
-  // Rcout << "Do MH!";
-  double accept_ratio = loglik_new - loglik_old + TPrior(new_forest, hypers) - TPrior(forest, hypers);
-  if(log(unif_rand()) < accept_ratio) {
-    // Rcout << "Accept fix!";
-    delete forest.back();
-    // Rcout << "Reass!";
-    forest = new_forest;
-  }
-  else {
-    // Rcout << "Reject fix!";
-    UnnormDeleteTree(forest, new_forest, hypers);
-  }
-
-}
-
 ProbHypers::ProbHypers(double d_mass,
                        arma::vec log_p,
-                       int num_pred,
-                       bool use_c)
+                       bool use_c,
+                       arma::uvec group)
   : use_counts(use_c), dirichlet_mass(d_mass), log_prior(log_p)
 {
   log_V.clear();
-  counts = zeros<sp_umat>(num_pred,1);
   log_mass = log(d_mass);
-  // num_branch = 0.;
+  LoadGroups(group);
+}
+
+void ProbHypers::LoadGroups(arma::uvec group) {
+  this->group = group;
+  int num_groups = group.max() + 1;
+  counts = zeros<sp_umat>(num_groups,1);
+  int P = group.size();
+  group_to_vars.resize(num_groups);
+  for(int i = 0; i < num_groups; i++) {
+    group_to_vars[i].resize(0);
+  }
+  for(int j = 0; j < P; j++) {
+    int idx = group(j);
+    group_to_vars[idx].push_back(j);
+  }
 }
 
 ProbHypers::ProbHypers() {
-  // num_branch = 0.;
 }
 
 double ProbHypers::calc_log_v(int n, int t) {
@@ -1693,140 +1310,19 @@ double ProbHypers::calc_log_v(int n, int t) {
 
 void AddTreeCounts(ProbHypers& split_hypers, Node* node) {
   if(!(node->is_leaf)) {
-    split_hypers.counts(node->var) = split_hypers.counts(node->var) + 1;
+    split_hypers.counts(split_hypers.group(node->var))
+      = split_hypers.counts(split_hypers.group(node->var)) + 1;
     AddTreeCounts(split_hypers, node->left);
     AddTreeCounts(split_hypers, node->right);
-    // split_hypers.num_branch += 1;
   }
 }
 
 void SubtractTreeCounts(ProbHypers& split_hypers, Node* node) {
   if(!(node->is_leaf)) {
-    split_hypers.counts(node->var) = split_hypers.counts(node->var) - 1;
+    split_hypers.counts(split_hypers.group(node->var))
+      = split_hypers.counts(split_hypers.group(node->var)) - 1;
     SubtractTreeCounts(split_hypers, node->left);
     SubtractTreeCounts(split_hypers, node->right);
-    // split_hypers.num_branch -= 1;
-  }
-}
-
-double TPrior(const std::vector<Node*>& forest, const Hypers& hypers) {
-  int num_tree = forest.size();
-  return log(hypers.num_tree_prob) +
-    (num_tree - 1.0) * log(1.0 - hypers.num_tree_prob);
-}
-
-void RenormAddTree(std::vector<Node*>& forest,
-                   std::vector<Node*>& new_forest,
-                   Hypers& hypers) {
-
-  int num_tree = forest.size();
-  double factor = (double)num_tree / (num_tree + 1.0);
-  factor = pow(factor, 0.5);
-
-  // Increase number of trees
-  hypers.num_tree = num_tree + 1;
-
-  // Scale sigma_mu
-  if(RESCALE) {
-    hypers.sigma_mu = hypers.sigma_mu * factor;
-    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
-
-    // Scale the leaves
-    for(int i = 0; i < new_forest.size(); i++) {
-      std::vector<Node*> leafs = leaves(new_forest[i]);
-      for(int j = 0; j < leafs.size(); j++) {
-        leafs[j]->mu = factor * leafs[j]->mu;
-      }
-    }
-  }
-}
-
-void UnnormAddTree(std::vector<Node*>& forest,
-                   std::vector<Node*>& new_forest,
-                   Hypers& hypers) {
-
-
-  int num_tree = forest.size();
-  double factor = (double)num_tree / (num_tree + 1.0);
-  factor = pow(factor, -0.5);
-
-  // Decrease number of trees
-  hypers.num_tree = num_tree;
-
-  // Descale sigma_mu
-  if(RESCALE) {
-
-    hypers.sigma_mu = hypers.sigma_mu * factor;
-    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
-
-    // Descale the leaves
-    for(int i = 0; i < new_forest.size(); i++) {
-      std::vector<Node*> leafs = leaves(new_forest[i]);
-      for(int j = 0; j < leafs.size(); j++) {
-        leafs[j]->mu = factor * leafs[j]->mu;
-      }
-    }
-  }
-}
-
-void RenormDeleteTree(std::vector<Node*>& forest,
-                      std::vector<Node*>& new_forest,
-                      Hypers& hypers) {
-
-
-  // Rcout << "1";
-  int num_tree = forest.size();
-  double factor = (double)num_tree / (num_tree - 1.0);
-  factor = pow(factor, 0.5);
-
-  // Rcout << "2";
-  // Decrease number of trees
-  hypers.num_tree = num_tree - 1;
-
-  // Rcout << "3";
-  // Descale sigma_mu
-  if(RESCALE) {
-
-    hypers.sigma_mu = hypers.sigma_mu * factor;
-    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
-
-    // Descale the leaves
-    // Rcout << "4";
-    for(int i = 0; i < new_forest.size(); i++) {
-      std::vector<Node*> leafs = leaves(new_forest[i]);
-      // Rcout << i;
-      for(int j = 0; j < leafs.size(); j++) {
-        leafs[j]->mu = factor * leafs[j]->mu;
-      }
-    }
-  }
-
-}
-
-void UnnormDeleteTree(std::vector<Node*>& forest,
-                      std::vector<Node*>& new_forest,
-                      Hypers& hypers) {
-
-  int num_tree = forest.size();
-  double factor = (double)num_tree / (num_tree - 1.0);
-  factor = pow(factor, -0.5);
-
-  // Increase the number of trees
-  hypers.num_tree = num_tree;
-
-  // Rescale sigma_mu
-  if(RESCALE) {
-
-    hypers.sigma_mu = hypers.sigma_mu * factor;
-    hypers.sigma_mu_hat = hypers.sigma_mu_hat * factor;
-
-    // Descale the leaves
-    for(int i = 0; i < new_forest.size(); i++) {
-      std::vector<Node*> leafs = leaves(new_forest[i]);
-      for(int j = 0; j < leafs.size(); j++) {
-        leafs[j]->mu = factor * leafs[j]->mu;
-      }
-    }
   }
 }
 
@@ -1848,11 +1344,8 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
   for(int i = 0; i < num_iter; i++) {
     if(opts.update_s && (num_gibbs > num_warmup)) {
       hypers.split_hypers.use_counts = true;
-      // IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
     }
-    else {
-      IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
-    }
+    IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
     num_gibbs++;
@@ -1864,12 +1357,6 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
   return Y_out;
 
-}
-
-void Forest::set_s(const arma::vec& s_) {
-  hypers.s = s_;
-  hypers.logs = log(s_);
-  hypers.logZ = hypers.logs;
 }
 
 arma::uvec Forest::get_counts() {
@@ -1894,9 +1381,7 @@ RCPP_MODULE(mod_forest) {
     // .constructor<Rcpp::List>()
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
-    .method("get_s", &Forest::get_s)
     .method("get_counts", &Forest::get_counts)
-    .method("set_s", &Forest::set_s)
     .method("get_tree_counts", &Forest::get_tree_counts)
     .field("num_gibbs", &Forest::num_gibbs);
 
