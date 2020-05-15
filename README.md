@@ -39,11 +39,8 @@ library(devtools)
 install_github("theodds/SoftBART")
 ```
 
-Note that if you are on OSX, you may need to first run the following
-commands from the terminal:
-
-    curl -O http://r.research.att.com/libs/gfortran-4.8.2-darwin13.tar.bz2
-    sudo tar fvxz gfortran-4.8.2-darwin13.tar.bz2 -C /
+Note that if you are on OSX you may need to install the gfortran library
+from <https://cran.r-project.org/bin/macosx/tools/>.
 
 ### Usage
 
