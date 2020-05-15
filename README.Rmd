@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This package implements the methodology described in the paper 
 
-- Linero, A.R. and Yang, Y. (2017). *Bayesian tree ensembles that adapt to smoothness and sparsity.* (In preapration)
+- Linero, A.R. and Yang, Y. (2018). *Bayesian tree ensembles that adapt to smoothness and sparsity.* Journal of the Royal Statistical Society, Series B. 
 
 ### Installation
 
@@ -58,7 +58,7 @@ gen_data <- function(n_train, n_test, P, sigma) {
 }
 
 ## Simiulate dataset
-sim_data <- gen_data(250, 100, 50, 1)
+sim_data <- gen_data(250, 100, 1000, 1)
     
 ## Fit the model
 fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test, 
