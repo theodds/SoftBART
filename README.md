@@ -9,6 +9,27 @@ This package implements the methodology described in the paper
     adapt to smoothness and sparsity.* Journal of the Royal Statistical
     Society, Series B.
 
+### New features on MFM Branch\!\!
+
+Some new experimental features have been pushed to the MFM branch. These
+include:
+
+  - The Dirichlet prior has been replaced with a Gibbs prior on the
+    partition of the branches, or (equivalently), a “Mixture of Finite
+    Mixtures” prior. See Miller and Harrison (2018, JASA) for a
+    description of these priors in the context of Bayesian nonparametric
+    mixture models. In addition to (suspected) better performance in
+    theory and practice, the MCMC for the Gibbs prior should (hopefully)
+    mix better.
+
+  - New Markov transistions are used, including sampling a tree from the
+    prior and using a type of “Perturb” move due to Pratola (2016,
+    Bayesian Analysis). This has substantial benefits for the mixing of
+    the chain.
+
+I plan to merge these changes into master once they are thoroughly
+tested.
+
 ### Installation
 
 The package can be installed with the `devtools` package:
@@ -19,8 +40,7 @@ install_github("theodds/SoftBART")
 ```
 
 Note that if you are on OSX, you may need to first run the following
-commands from the
-    terminal:
+commands from the terminal:
 
     curl -O http://r.research.att.com/libs/gfortran-4.8.2-darwin13.tar.bz2
     sudo tar fvxz gfortran-4.8.2-darwin13.tar.bz2 -C /
