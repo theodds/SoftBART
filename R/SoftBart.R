@@ -24,7 +24,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
                    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
-                   temperature = 1.0, log_prior = NULL, zeta = 2) {
+                   temperature = 1.0, log_prior = NULL, zeta = 0) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
