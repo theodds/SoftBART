@@ -7,6 +7,27 @@
 struct Hypers;
 struct Node;
 
+struct ProbHypers {
+  bool use_counts;
+  double dirichlet_mass;
+  double log_mass;
+  // int num_branch;
+
+  double calc_log_v(int n, int t);
+
+  ProbHypers(double d_mass, arma::vec log_p, int num_pred, bool use_c);
+  ProbHypers();
+
+  int SampleVar();
+  int ResampleVar(int var);
+  void SwitchVar(int v_old, int v_new);
+
+  std::map<std::pair<int,int>,double> log_V;
+  arma::sp_uvec counts;
+  arma::vec log_prior;
+
+};
+
 struct Hypers {
 
   double alpha;
@@ -25,6 +46,8 @@ struct Hypers {
   arma::vec logs;
   arma::vec logZ;
   arma::uvec group;
+
+  ProbHypers split_hypers;
 
   arma::vec rho_propose;
 
@@ -54,7 +77,7 @@ struct Hypers {
   void update_tau(std::vector<Node*>& forest,
                   const arma::mat& X, const arma::vec& Y);
 
-  int SampleVar() const;
+  int SampleVar();
 
   Hypers(Rcpp::List hypers);
   Hypers();
@@ -83,15 +106,15 @@ struct Node {
   double current_weight;
 
   // Functions
-  void Root(const Hypers& hypers);
+  void Root(Hypers& hypers);
   void GetLimits();
   void AddLeaves();
-  void BirthLeaves(const Hypers& hypers);
+  void BirthLeaves(Hypers& hypers);
   bool is_left();
-  void GenTree(const Hypers& hypers);
-  void GenBelow(const Hypers& hypers);
+  void GenTree(Hypers& hypers);
+  void GenBelow(Hypers& hypers);
   void GetW(const arma::mat& X, int i);
-  void DeleteLeaves();
+  void DeleteLeaves(Hypers& hypers);
   void UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
   void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
@@ -234,18 +257,16 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts);
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts);
 double activation(double x, double c, double tau);
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 const Hypers& hypers);
+                 Hypers& hypers);
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
+                Hypers& hypers);
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
-void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
-                          const Hypers& hypers);
-Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
+                Hypers& hypers);
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
 double probability_node_birth(Node* tree);
@@ -411,6 +432,10 @@ std::vector<double> get_perturb_limits(Node* branch);
 void perturb_decision_rule(Node* tree,
                            const arma::mat& X,
                            const arma::vec& Y,
-                           const Hypers& hypers);
+                           Hypers& hypers);
+
+// Gibbs Prior stuff
+void AddTreeCounts(ProbHypers& split_hypers, Node* node);
+void SubtractTreeCounts(ProbHypers& split_hypers, Node* node);
 
 #endif
