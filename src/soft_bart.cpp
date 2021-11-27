@@ -1375,6 +1375,10 @@ arma::umat Forest::get_tree_counts() {
   return tree_counts;
 }
 
+void Forest::set_sigma(double sigma) {
+  hypers.sigma = sigma;
+}
+
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1384,6 +1388,7 @@ RCPP_MODULE(mod_forest) {
     .method("do_gibbs", &Forest::do_gibbs)
     .method("get_counts", &Forest::get_counts)
     .method("get_tree_counts", &Forest::get_tree_counts)
+    .method("set_sigma", &Forest::set_sigma)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }

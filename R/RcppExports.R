@@ -29,8 +29,8 @@ rlgam <- function(shape) {
     .Call('_SoftBart_rlgam', PACKAGE = 'SoftBart', shape)
 }
 
-SoftBart <- function(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, tau_rate, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_beta, update_gamma, update_tau, update_tau_mean, log_prior) {
-    .Call('_SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, tau_rate, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_beta, update_gamma, update_tau, update_tau_mean, log_prior)
+SoftBart <- function(X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, tau_rate, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_beta, update_gamma, update_tau, update_tau_mean, update_sigma, log_prior) {
+    .Call('_SoftBart_SoftBart', PACKAGE = 'SoftBart', X, Y, X_test, group, alpha, beta, gamma, sigma, shape, width, num_tree, sigma_hat, k, tau_rate, temperature, num_burn, num_thin, num_save, num_print, update_sigma_mu, update_s, update_beta, update_gamma, update_tau, update_tau_mean, update_sigma, log_prior)
 }
 
 do_mh <- function(loglik_new, loglik_old, new_to_old, old_to_new) {
