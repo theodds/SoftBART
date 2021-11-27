@@ -179,6 +179,8 @@ class Forest {
   arma::umat get_tree_counts();
   void set_sigma(double sigma);
   int num_gibbs;
+  arma::vec do_predict(arma::mat& X);
+  double get_sigma();
 
 
 };

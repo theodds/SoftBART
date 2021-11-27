@@ -1379,6 +1379,14 @@ void Forest::set_sigma(double sigma) {
   hypers.sigma = sigma;
 }
 
+double Forest::get_sigma() {
+  return hypers.sigma;
+}
+
+arma::vec Forest::do_predict(arma::mat& X) {
+  return(predict(trees, X, hypers));
+}
+
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1389,6 +1397,7 @@ RCPP_MODULE(mod_forest) {
     .method("get_counts", &Forest::get_counts)
     .method("get_tree_counts", &Forest::get_tree_counts)
     .method("set_sigma", &Forest::set_sigma)
+    .method("do_predict", &Forest::do_predict)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }
