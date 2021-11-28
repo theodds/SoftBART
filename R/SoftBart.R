@@ -176,7 +176,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$shape,
                   hypers$width,
                   hypers$num_tree,
-                  hypers$sigma_hat / (max(Y) - min(Y)),
+                  hypers$sigma_hat,
                   hypers$k,
                   hypers$tau_rate,
                   hypers$temperature,

@@ -70,12 +70,10 @@ gen_data <- function(n_train, n_test, P, sigma) {
 sim_data <- gen_data(250, 100, 1000, 1)
     
 ## Fit the model
-hypers <- Hypers(sim_data$X, sim_data$Y, num_tree = 50, temperature = 1, 
-                 sigma_hat = 1)
+hypers <- Hypers(sim_data$X, sim_data$Y, num_tree = 50, temperature = 1)
 fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test, 
                 hypers = hypers,
-                opts = Opts(num_burn = 5000, num_save = 5000, update_tau = TRUE,
-                            update_sigma = FALSE))
+                opts = Opts(num_burn = 5000, num_save = 5000, update_tau = TRUE))
     
 ## Plot the fit (note: interval estimates are not prediction intervals, 
 ## so they do not cover the predictions at the nominal rate)
