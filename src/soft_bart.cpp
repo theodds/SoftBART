@@ -3,8 +3,6 @@
 using namespace Rcpp;
 using namespace arma;
 
-#define M_2PI 6.283185307179586476925286
-
 bool RESCALE = true;
 
 Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opts_) {
@@ -1375,6 +1373,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
   vec Y_hat = predict(trees, X, hypers);
   mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+  arma::vec weights = arma::ones<arma::vec>(Y.n_elem);
 
   int num_warmup = floor(opts.num_burn / 2.0);
 
@@ -1382,7 +1381,34 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     if(opts.update_s && (num_gibbs > num_warmup)) {
       hypers.split_hypers.use_counts = true;
     }
-    IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+    IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
+    vec tmp = predict(trees, X_test, hypers);
+    Y_out.row(i) = tmp.t();
+    num_gibbs++;
+    if(num_gibbs % opts.num_print == 0) {
+      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
+        hypers.num_tree << std::endl;
+    }
+  }
+
+  return Y_out;
+
+}
+
+arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
+                                    const arma::vec& weights,
+                                    const arma::mat& X_test, int num_iter) {
+
+  vec Y_hat = predict(trees, X, hypers);
+  mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+
+  int num_warmup = floor(opts.num_burn / 2.0);
+
+  for(int i = 0; i < num_iter; i++) {
+    if(opts.update_s && (num_gibbs > num_warmup)) {
+      hypers.split_hypers.use_counts = true;
+    }
+    IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
     num_gibbs++;
@@ -1430,6 +1456,7 @@ RCPP_MODULE(mod_forest) {
     // .constructor<Rcpp::List>()
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
+    .method("do_gibbs_weighted", &Forest::do_gibbs_weighted)
     .method("get_counts", &Forest::get_counts)
     .method("get_tree_counts", &Forest::get_tree_counts)
     .method("set_sigma", &Forest::set_sigma)
