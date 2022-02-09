@@ -329,7 +329,7 @@ double cauchy_jacobian(double tau, double sigma_hat) {
 
 }
 
-double update_sigma(const arma::vec& r, const arma::vec&weights,
+double update_sigma(const arma::vec& r, const arma::vec& weights,
                     double sigma_hat, double sigma_old,
                     double temperature) {
 
