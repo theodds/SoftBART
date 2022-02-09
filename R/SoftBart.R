@@ -22,7 +22,9 @@
 #' @return Returns a list containing the function arguments.
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
-                   tau_rate = 10, temperature = 1.0, log_prior = NULL, zeta = 0) {
+                   tau_rate = 10, temperature = 1.0, log_prior = NULL, zeta = 0,
+                   weights = NULL)
+{
 
   out                                  <- list()
 
@@ -42,7 +44,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
   Y                                    <- normalize_bart(Y)
   if(is.null(sigma_hat))
-    sigma_hat                          <- GetSigma(X,Y)
+    sigma_hat                          <- GetSigma(X,Y, weights = weights)
 
   out$sigma                            <- sigma_hat
   out$sigma_hat                        <- sigma_hat
@@ -56,6 +58,8 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
     prior <- prior / sum(prior)
     log_prior <- log(prior)
   }
+  if(is.null(weights)) weights <- rep(1, length(Y))
+  out$weights <- weights
   
   stopifnot(length(log_prior) == length(out$group))
   out$log_prior <- log_prior
@@ -180,6 +184,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$k,
                   hypers$tau_rate,
                   hypers$temperature,
+                  hypers$weights,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
@@ -213,7 +218,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
 }
 
-GetSigma <- function(X,Y) {
+GetSigma <- function(X,Y,weights=NULL) {
 
   stopifnot(is.matrix(X) | is.data.frame(X))
 
@@ -222,7 +227,7 @@ GetSigma <- function(X,Y) {
   }
 
 
-  fit <- cv.glmnet(x = X, y = Y)
+  fit <- cv.glmnet(x = X, y = Y, weights = weights)
   fitted <- predict(fit, X)
   sigma_hat <- sqrt(mean((fitted - Y)^2))
   # sigma_hat <- 0

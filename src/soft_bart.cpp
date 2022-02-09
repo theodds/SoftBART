@@ -289,7 +289,7 @@ void GetSuffStats(Node* n, const arma::vec& y,
 
 }
 
-double LogLT(Node* n, const arma::vec& Y,
+double LogLT(Node* n, const arma::vec& Y, const arma::vec& weights,
              const arma::mat& X, const Hypers& hypers) {
 
   // Rcout << "Leaves ";
@@ -488,6 +488,7 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
 
 Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
+                        const arma::vec& weights,
                         const arma::mat& X_test,
                         Hypers& hypers,
                         const Opts& opts) {
@@ -502,7 +503,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   for(int i = 0; i < opts.num_burn; i++) {
 
 
-    IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
+    IterateGibbsNoS(forest, Y_hat, weights, hypers, X, Y, opts);
 
     // Don't update s for half of the burn-in
     if((i == floor(0.5 * opts.num_burn)) && opts.update_s) {
@@ -534,7 +535,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
-      IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
+      IterateGibbsNoS(forest, Y_hat, weights, hypers, X, Y, opts);
     }
 
     // Save stuff
@@ -581,12 +582,13 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
+                     const arma::vec& weights,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts) {
 
 
   // Rcout << "Backfitting trees";
-  TreeBackfit(forest, Y_hat, hypers, X, Y, opts);
+  TreeBackfit(forest, Y_hat, weights, hypers, X, Y, opts);
   arma::vec res = Y - Y_hat;
   arma::vec means = get_means(forest);
 
@@ -601,7 +603,8 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
 }
 
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights, Hypers& hypers, const arma::mat& X,
+                 const arma::vec& Y,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
@@ -614,16 +617,16 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec res = Y - Y_star;
 
     if(unif_rand() < MH_PRIOR) {
-      forest[t] = draw_prior(forest[t], X, res, hypers);
+      forest[t] = draw_prior(forest[t], X, res, weights, hypers);
     }
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
-      birth_death(forest[t], X, res, hypers);
+      birth_death(forest[t], X, res, weights, hypers);
     }
     else {
-      perturb_decision_rule(forest[t], X, res, hypers);
+      perturb_decision_rule(forest[t], X, res, weights, hypers);
     }
-    if(opts.update_tau) forest[t]->UpdateTau(res, X, hypers);
-    forest[t]->UpdateMu(res, X, hypers);
+    if(opts.update_tau) forest[t]->UpdateTau(res, weights, X, hypers);
+    forest[t]->UpdateMu(res, weights, X, hypers);
     Y_hat = Y_star + predict(forest[t], X, hypers);
   }
 }
@@ -633,20 +636,21 @@ double activation(double x, double c, double tau) {
 }
 
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 Hypers& hypers) {
+                 const arma::vec& weights, Hypers& hypers) {
 
 
   double p_birth = probability_node_birth(tree);
 
   if(unif_rand() < p_birth) {
-    node_birth(tree, X, Y, hypers);
+    node_birth(tree, X, Y, weights, hypers);
   }
   else {
-    node_death(tree, X, Y, hypers);
+    node_death(tree, X, Y, weights, hypers);
   }
 }
 
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
+                const arma::vec& weights,
                 Hypers& hypers) {
 
   // Rcout << "Sample leaf";
@@ -659,7 +663,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood of current state
   // Rcout << "Current likelihood";
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
   ll_before += log(1.0 - leaf_prior);
 
   // Get transition probability
@@ -672,7 +676,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood after
   // Rcout << "New Likelihood";
-  double ll_after = LogLT(tree, Y, X, hypers);
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
   ll_after += log(leaf_prior) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers)) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers));
@@ -695,6 +699,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 }
 
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
+                const arma::vec& weights,
                 Hypers& hypers) {
 
   // Select branch to kill Children
@@ -706,7 +711,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double ll_before = LogLT(tree, Y, X, hypers) +
+  double ll_before = LogLT(tree, Y, weights, X, hypers) +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
   // Compute forward transition prob
@@ -721,7 +726,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->is_leaf = true;
 
   // Compute likelihood after
-  double ll_after = LogLT(tree, Y, X, hypers) + log(1.0 - leaf_prob);
+  double ll_after = LogLT(tree, Y, weights, X, hypers) + log(1.0 - leaf_prob);
 
   // Compute backwards transition
   std::vector<Node*> leafs = leaves(tree);
@@ -824,6 +829,7 @@ void get_limits_below(Node* node) {
 void perturb_decision_rule(Node* tree,
                            const arma::mat& X,
                            const arma::vec& Y,
+                           const arma::vec& weights,
                            Hypers& hypers) {
   
   // Randomly choose a branch; if no branches, we automatically reject
@@ -835,7 +841,7 @@ void perturb_decision_rule(Node* tree,
   Node* branch = rand(bbranches);
   
   // Calculuate tree likelihood before proposal
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
   
   // Calculate product of all 1/(B - A) here
   double cutpoint_likelihood = calc_cutpoint_likelihood(tree);
@@ -859,7 +865,7 @@ void perturb_decision_rule(Node* tree,
   get_limits_below(branch);
   
   // Calculate likelihood after proposal
-  double ll_after = LogLT(tree, Y, X, hypers);
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
   
   // Calculate product of all 1/(B-A)
   double cutpoint_likelihood_after = calc_cutpoint_likelihood(tree);
@@ -885,11 +891,12 @@ void perturb_decision_rule(Node* tree,
   }
 }
 
-Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hypers) {
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights, Hypers& hypers) {
   
   // Compute loglik before
   Node* tree_0 = tree;
-  double loglik_before = LogLT(tree_0, Y, X, hypers);
+  double loglik_before = LogLT(tree_0, Y, weights, X, hypers);
   
   // GIBBS: NEED TO REMOVE THE TREE COUNTS AND ADD BACK
   SubtractTreeCounts(hypers.split_hypers, tree);
@@ -898,7 +905,7 @@ Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, Hypers& hyp
   Node* tree_1 = new Node;
   tree_1->Root(hypers);
   tree_1->GenBelow(hypers);
-  double loglik_after = LogLT(tree_1, Y, X, hypers);
+  double loglik_after = LogLT(tree_1, Y, weights, X, hypers);
   
   // Do MH
   if(log(unif_rand()) < loglik_after - loglik_before) {
@@ -1097,7 +1104,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double alpha, double beta, double gamma, double sigma,
               double shape, double width, int num_tree,
               double sigma_hat, double k, double tau_rate,
-              double temperature,
+              double temperature, const arma::vec& weights,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_beta, bool update_gamma,
@@ -1113,7 +1120,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
                              shape, num_tree, tau_rate, temperature, log_prior);
 
   // Rcout << "Doing soft_bart\n";
-  return do_soft_bart(X,Y,X_test,hypers,opts);
+  return do_soft_bart(X, Y, weights, X_test, hypers, opts);
 
 }
 
