@@ -7,6 +7,7 @@ bool RESCALE = true;
 
 Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opts_) {
   trees.resize(hypers.num_tree);
+  saved_forests.resize(0);
   for(int i = 0; i < hypers.num_tree; i++) {
     trees[i] = new Node();
     trees[i]->Root(hypers);
@@ -1422,11 +1423,21 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
       Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
         hypers.num_tree << std::endl;
     }
+    if(opts.cache_trees) {
+      saved_forests.push_back(copy_forest(trees));
+    }
   }
 
   return Y_out;
 
 }
+
+arma::vec Forest::predict_iteration(const arma::mat& X, int r_iter) {
+  int cpp_iter = iter - 1;
+  if(r_iter > saved_trees.size())
+    stop("Specified iteration exceeds number of saved trees");
+  return predict(saved_trees[cpp_iter], X, hypers);
+} 
 
 arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
                                     const arma::vec& weights,
@@ -1448,6 +1459,9 @@ arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
     if(num_gibbs % opts.num_print == 0) {
       Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
         hypers.num_tree << std::endl;
+    }
+    if(opts.cache_trees) {
+      saved_forests.push_back(copy_forest(trees));
     }
   }
 
@@ -1494,6 +1508,7 @@ RCPP_MODULE(mod_forest) {
     .method("get_tree_counts", &Forest::get_tree_counts)
     .method("set_sigma", &Forest::set_sigma)
     .method("do_predict", &Forest::do_predict)
+    .method("predict_iteration", &Forest::predict_iteration)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }
