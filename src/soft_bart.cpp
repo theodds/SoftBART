@@ -1138,10 +1138,10 @@ Node* copy_tree(Node* root, Hypers& hypers) {
   return nroot;
 }
 
-std::vector<Node*> copy_forest(std::vector<Node*> forest) {
+std::vector<Node*> copy_forest(std::vector<Node*> forest, Hypers& hypers) {
   std::vector<Node*> nforest(forest.size());
   for(int i = 0; i < forest.size(); i++) {
-    nforest[i] = copy_tree(forest[i]);
+    nforest[i] = copy_tree(forest[i], hypers);
   }
   return nforest;
 }
@@ -1424,7 +1424,7 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
         hypers.num_tree << std::endl;
     }
     if(opts.cache_trees) {
-      saved_forests.push_back(copy_forest(trees));
+      saved_forests.push_back(copy_forest(trees, hypers));
     }
   }
 
@@ -1461,7 +1461,7 @@ arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
         hypers.num_tree << std::endl;
     }
     if(opts.cache_trees) {
-      saved_forests.push_back(copy_forest(trees));
+      saved_forests.push_back(copy_forest(trees, hypers));
     }
   }
 

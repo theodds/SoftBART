@@ -280,7 +280,7 @@ double tree_loglik(Node* node, int node_depth, double gamma, double beta);
 Node* rand(std::vector<Node*> ngb);
 void copy_node(Node* nn, Node* n);
 Node* copy_tree(Node* root, Hypers& hypers);
-std::vector<Node*> copy_forest(std::vector<Node*> forest);
+std::vector<Node*> copy_forest(std::vector<Node*> forest, Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
