@@ -282,7 +282,7 @@ Node* rand(std::vector<Node*> ngb);
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
 void copy_node(Node* nn, Node* n);
 Node* copy_tree(Node* root, Hypers& hypers);
-std::vector<Node*> copy_forest(std::vector<Node*> forest);
+std::vector<Node*> copy_forest(std::vector<Node*> forest, Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
