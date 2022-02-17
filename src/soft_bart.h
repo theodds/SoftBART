@@ -188,7 +188,7 @@ class Forest {
   void set_sigma(double sigma);
   int num_gibbs;
   arma::vec do_predict(arma::mat& X);
-  arma::mat predict_iteration(arma::mat& X, int r_ter);
+  arma::vec predict_iteration(const arma::mat& X, int r_ter);
   double get_sigma();
 
 
