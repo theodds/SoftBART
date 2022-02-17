@@ -1112,6 +1112,39 @@ Node* rand(std::vector<Node*> ngb) {
   return ngb[i];
 }
 
+// Assume: parent, left, and right are set appropriately (taken care of by AddLeaves)
+void copy_node(Node* nn, Node* n) {
+  nn->is_leaf = n->is_leaf;
+  nn->is_root = n->is_root;
+  nn->var = n->var;
+  nn->val = n->val;
+  nn->lower = n->lower;
+  nn->upper = n->upper;
+  nn->tau = n->tau;
+  nn->mu = n->mu;
+  nn->current_weight = n->current_weight;
+  if(!n->is_leaf) {
+    nn->AddLeaves();
+    copy_node(nn->left, n->left);
+    copy_node(nn->right, n->right);
+  }
+}
+
+Node* copy_tree(Node* root, Hypers& hypers) {
+  Node* nroot = new Node();
+  nroot->Root(hypers);
+  copy_node(nroot, root);
+  return nroot;
+}
+
+std::vector<Node*> copy_forest(std::vector<Node*> forest) {
+  std::vector<Node*> nforest(forest.size());
+  for(int i = 0; i < forest.size(); i++) {
+    nforest[i] = copy_tree(forest[i]);
+  }
+  return nforest;
+}
+
 arma::vec loglik_data(const arma::vec& Y, const arma::vec& weights,
                       const arma::vec& Y_hat, const Hypers& hypers) {
   vec res = Y - Y_hat;
