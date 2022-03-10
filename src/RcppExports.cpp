@@ -72,6 +72,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// update_sigma
+double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old, double temperature);
+RcppExport SEXP _SoftBart_update_sigma(SEXP rSEXP, SEXP sigma_hatSEXP, SEXP sigma_oldSEXP, SEXP temperatureSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type r(rSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma_hat(sigma_hatSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma_old(sigma_oldSEXP);
+    Rcpp::traits::input_parameter< double >::type temperature(temperatureSEXP);
+    rcpp_result_gen = Rcpp::wrap(update_sigma(r, sigma_hat, sigma_old, temperature));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rlgam
 double rlgam(double shape);
 RcppExport SEXP _SoftBart_rlgam(SEXP shapeSEXP) {
@@ -145,6 +159,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rcpparma_outerproduct", (DL_FUNC) &_SoftBart_rcpparma_outerproduct, 1},
     {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
     {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
+    {"_SoftBart_update_sigma", (DL_FUNC) &_SoftBart_update_sigma, 4},
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
     {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 28},
     {"_SoftBart_do_mh", (DL_FUNC) &_SoftBart_do_mh, 4},

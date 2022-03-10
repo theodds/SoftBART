@@ -351,6 +351,7 @@ double update_sigma(const arma::vec& r, const arma::vec& weights,
 
 }
 
+// [[Rcpp::export]]
 double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
                     double temperature) {
 
@@ -1506,6 +1507,7 @@ RCPP_MODULE(mod_forest) {
     .method("do_gibbs_weighted", &Forest::do_gibbs_weighted)
     .method("get_counts", &Forest::get_counts)
     .method("get_tree_counts", &Forest::get_tree_counts)
+    .method("get_sigma", &Forest::get_sigma)
     .method("set_sigma", &Forest::set_sigma)
     .method("do_predict", &Forest::do_predict)
     .method("predict_iteration", &Forest::predict_iteration)

@@ -26,7 +26,7 @@ sim_data <- gen_data(250, 100, 1000, 1)
 ## Fitting ----
 
 hypers <- Hypers(sim_data$X, sim_data$Y)
-opts <- Opts(cache_trees = TRUE, num_burn = 100)
+opts <- Opts(cache_trees = TRUE, num_burn = 100, num_save = 100)
 
 forest <- MakeForest(hypers, opts)
 mu_hat <- forest$do_gibbs(sim_data$X, sim_data$Y, sim_data$X_test, opts$num_burn)
