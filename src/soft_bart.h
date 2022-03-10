@@ -166,7 +166,10 @@ class Forest {
   arma::vec get_s() {return hypers.s;}
   arma::uvec get_counts();
   arma::umat get_tree_counts();
+  void set_sigma(double s);
+  double get_sigma();
   void set_s(const arma::vec& s_);
+  arma::vec do_predict(const arma::mat& X);
   int num_gibbs;
 
 

@@ -25,6 +25,10 @@ rcpparma_bothproducts <- function(x) {
     .Call('_SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
 }
 
+update_sigma <- function(r, sigma_hat, sigma_old, temperature) {
+    .Call('_SoftBart_update_sigma', PACKAGE = 'SoftBart', r, sigma_hat, sigma_old, temperature)
+}
+
 rlgam <- function(shape) {
     .Call('_SoftBart_rlgam', PACKAGE = 'SoftBart', shape)
 }

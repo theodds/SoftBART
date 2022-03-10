@@ -301,6 +301,7 @@ double cauchy_jacobian(double tau, double sigma_hat) {
 
 }
 
+// [[Rcpp::export]]
 double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
                     double temperature) {
 
@@ -1545,6 +1546,14 @@ void Forest::set_s(const arma::vec& s_) {
   hypers.logs = log(s_);
 }
 
+void Forest::set_sigma(double s) {
+  hypers.sigma = s;
+}
+
+double Forest::get_sigma() {
+  return hypers.sigma;
+}
+
 arma::uvec Forest::get_counts() {
   return get_var_counts(trees, hypers);
 }
@@ -1560,6 +1569,10 @@ arma::umat Forest::get_tree_counts() {
   return tree_counts;
 }
 
+arma::vec Forest::do_predict(const arma::mat& X) {
+  return predict(trees, X, hypers);
+}
+
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1570,6 +1583,9 @@ RCPP_MODULE(mod_forest) {
     .method("get_s", &Forest::get_s)
     .method("get_counts", &Forest::get_counts)
     .method("set_s", &Forest::set_s)
+    .method("get_sigma", &Forest::get_sigma)
+    .method("set_sigma", &Forest::set_sigma)
+    .method("do_predict", &Forest::do_predict)
     .method("get_tree_counts", &Forest::get_tree_counts)
     .field("num_gibbs", &Forest::num_gibbs);
 
