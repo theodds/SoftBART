@@ -23,6 +23,7 @@
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    tau_rate = 10, temperature = 1.0, log_prior = NULL, zeta = 0,
+                   normalize_Y = TRUE,
                    weights = NULL)
 {
 
@@ -42,7 +43,9 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
     out$group                          <- group - 1
   }
 
-  Y                                    <- normalize_bart(Y)
+  if(normalize_Y) {
+    Y                                  <- normalize_bart(Y)
+  }
   if(is.null(sigma_hat))
     sigma_hat                          <- GetSigma(X,Y, weights = weights)
 
