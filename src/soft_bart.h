@@ -113,10 +113,11 @@ struct Opts {
   bool update_tau;
   bool update_tau_mean;
   bool update_num_tree;
+  bool update_sigma;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
     update_beta(false), update_gamma(false), update_tau(true),
-    update_tau_mean(false), update_num_tree(false) {
+  update_tau_mean(false), update_num_tree(false), update_sigma(true) {
 
   num_burn = 1;
   num_thin = 1;
@@ -135,6 +136,7 @@ Opts(Rcpp::List opts_) {
   update_tau = opts_["update_tau"];
   update_tau_mean = opts_["update_tau_mean"];
   update_num_tree = opts_["update_num_tree"];
+  update_sigma = opts_["update_sigma"];
   num_burn = opts_["num_burn"];
   num_thin = opts_["num_thin"];
   num_save = opts_["num_save"];
@@ -179,7 +181,7 @@ class Forest {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree);
+              bool update_tau_mean, bool update_num_tree, bool update_sigma);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,

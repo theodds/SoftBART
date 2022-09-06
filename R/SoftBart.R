@@ -72,6 +72,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @param num_save The number of samples to collect; in total, num_burn + num_save * num_thin iterations are run
 #' @param num_print Interval for how often to print the chain's progress
 #' @param update_sigma_mu If true, sigma_mu/k are updated, with a half-Cauchy prior on sigma_mu centered at the initial guess
+#' @param update_sigma If true, sigma is updated, with a half-Cauchy prior on sigma centered at the initial guess
 #' @param update_s If true, s is updated using the Dirichlet prior.
 #' @param update_alpha If true, alpha is updated using a scaled beta prime prior
 #' @param update_beta If true, beta is updated using a Normal(0,2^2) prior
@@ -83,7 +84,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-                 update_tau_mean = FALSE) {
+                 update_tau_mean = FALSE, update_sigma = TRUE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -98,6 +99,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   out$update_tau_mean <- update_tau_mean
   # out$update_num_tree <- update_num_tree
   out$update_num_tree <- FALSE
+  out$update_sigma    <- update_sigma
 
   return(out)
 
@@ -194,7 +196,8 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   opts$update_gamma,
                   opts$update_tau,
                   opts$update_tau_mean,
-                  opts$update_num_tree)
+                  opts$update_num_tree,
+                  opts$update_sigma)
 
 
   a <- min(Y)

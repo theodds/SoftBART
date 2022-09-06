@@ -41,7 +41,7 @@ Node::Node() {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree) {
+              bool update_tau_mean, bool update_num_tree, bool update_sigma) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -56,6 +56,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
   out.update_num_tree = update_num_tree;
+  out.update_sigma = update_sigma;
 
   return out;
 
@@ -583,7 +584,7 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
   arma::vec means = get_means(forest);
 
   // Rcout << "Doing other updates";
-  hypers.UpdateSigma(res);
+  if(opts.update_sigma) hypers.UpdateSigma(res);
   if(opts.update_sigma_mu) hypers.UpdateSigmaMu(means);
   if(opts.update_beta) hypers.UpdateBeta(forest);
   if(opts.update_gamma) hypers.UpdateGamma(forest);
@@ -1213,13 +1214,14 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double temperature,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
-              bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean, bool update_num_tree) {
-
+              bool update_s, bool update_alpha, bool update_beta, update_gamma,
+              bool update_tau, bool update_tau_mean, bool update_num_tree,
+              bool update_sigma) {
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean, update_num_tree);
+                       update_tau, update_tau_mean, update_num_tree,
+                       update_sigma);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
