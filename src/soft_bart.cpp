@@ -1214,7 +1214,7 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double temperature,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
-              bool update_s, bool update_alpha, bool update_beta, update_gamma,
+              bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
               bool update_tau, bool update_tau_mean, bool update_num_tree,
               bool update_sigma) {
 
