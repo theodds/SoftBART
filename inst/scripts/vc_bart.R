@@ -73,3 +73,5 @@ mu_hat_burn <- my_forest$do_gibbs_weighted(X, Y_scale / M, M^2, X, 1000)
 mu_hat_save <- my_forest$do_gibbs_weighted(X, Y_scale / M, M^2, X, 1000)
 
 head(mu_hat_save)
+
+plot(M * colMeans(fitted_vc$beta), mu)
