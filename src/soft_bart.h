@@ -43,11 +43,11 @@ struct Hypers {
   void UpdateTauRate(const std::vector<Node*>& forest);
 
   // For updating tau
-  double loglik_tau(double tau,
-                    const std::vector<Node*>& forest,
-                    const arma::mat& X, const arma::vec& Y);
-  void update_tau(std::vector<Node*>& forest,
-                  const arma::mat& X, const arma::vec& Y);
+  // double loglik_tau(double tau,
+  //                   const std::vector<Node*>& forest,
+  //                   const arma::mat& X, const arma::vec& Y);
+  // void update_tau(std::vector<Node*>& forest,
+  //                 const arma::mat& X, const arma::vec& Y);
 
   int SampleVar() const;
 
@@ -92,7 +92,8 @@ struct Node {
   void UpdateTau(const arma::vec& Y, const arma::vec& weights,
                  const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
-  double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
+  double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y,
+                    const arma::vec& weights, const Hypers& hypers);
 
   Node();
   ~Node();
@@ -192,7 +193,7 @@ Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double bet
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
                   double temperature);
 
-void GetSuffStats(Node* n, const arma::vec& y,
+void GetSuffStats(Node* n, const arma::vec& y, const arma::vec& weights,
                   const arma::mat& X, const Hypers& hypers,
                   arma::vec& mu_hat_out, arma::mat& Omega_inv_out);
 
@@ -201,9 +202,13 @@ double LogLT(Node* n, const arma::vec& Y, const arma::vec& weights,
 
 double cauchy_jacobian(double tau, double sigma_hat);
 
-double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
+double update_sigma(const arma::vec& r,
+                    double sigma_hat, double sigma_old,
                     double temperature = 1.0);
-arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers);
+double update_sigma(const arma::vec& r, const arma::vec& weights,
+                    double sigma_hat, double sigma_old,
+                    double temperature = 1.0);
+arma::vec loglik_data(const arma::vec& Y, const arma::vec& weights, const arma::vec& Y_hat, const Hypers& hypers);
 arma::vec predict(const std::vector<Node*>& forest,
                   const arma::mat& X,
                   const Hypers& hypers);
