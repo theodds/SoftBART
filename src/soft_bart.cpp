@@ -597,6 +597,7 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
+  double MH_PRIOR = 0.4;
 
   int num_tree = hypers.num_tree;
   for(int t = 0; t < num_tree; t++) {
@@ -604,6 +605,9 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
+    if(unif_rand() < MH_PRIOR) {
+      forest[t] = draw_prior(forest[t], X, res, hypers);
+    }
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
       birth_death(forest[t], X, res, hypers);
@@ -611,7 +615,7 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     }
     else {
       // Rcout << "Change step";
-      change_decision_rule(forest[t], X, res, hypers);
+      perturb_decision_rule(forest[t], X, res, hypers);
       // Rcout << "Done";
     }
     if(opts.update_tau) forest[t]->UpdateTau(res, X, hypers);
@@ -765,6 +769,168 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->upper = old_upper;
   }
 
+}
+
+void branches(Node* n, std::vector<Node*>& branch_vec) {
+  if(!(n->is_leaf)) {
+    branch_vec.push_back(n);
+    branches(n->left, branch_vec);
+    branches(n->right, branch_vec);
+  }
+}
+
+std::vector<Node*> branches(Node* root) {
+  std::vector<Node*> branch_vec;
+  branch_vec.resize(0);
+  branches(root, branch_vec);
+  return branch_vec;
+}
+
+
+
+double calc_cutpoint_likelihood(Node* node) {
+  if(node->is_leaf) return 1;
+  
+  double out = 1.0/(node->upper - node->lower);
+  out = out * calc_cutpoint_likelihood(node->left);
+  out = out * calc_cutpoint_likelihood(node->right);
+  
+  return out;
+}
+
+std::vector<double> get_perturb_limits(Node* branch) {
+  double min = 0.0;
+  double max = 1.0;
+  
+  Node* n = branch;
+  while(!(n->is_root)) {
+    if(n->is_left()) {
+      n = n->parent;
+      if(n->var == branch->var) {
+        if(n->val > min) {
+          min = n->val;
+        }
+      }
+    }
+    else {
+      n = n->parent;
+      if(n->var == branch->var) {
+        if(n->val < max) {
+          max = n->val;
+        }
+      }
+    }
+  }
+  std::vector<Node*> left_branches = branches(n->left);
+  std::vector<Node*> right_branches = branches(n->right);
+  for(int i = 0; i < left_branches.size(); i++) {
+    if(left_branches[i]->var == branch->var) {
+      if(left_branches[i]->val > min)
+        min = left_branches[i]->val;
+    }
+  }
+  for(int i = 0; i < right_branches.size(); i++) {
+    if(right_branches[i]->var == branch->var) {
+      if(right_branches[i]->val < max) {
+        max = right_branches[i]->val;
+      }
+    }
+  }
+  
+  std::vector<double> out; out.push_back(min); out.push_back(max);
+  return out;
+}
+
+void get_limits_below(Node* node) {
+  node->GetLimits();
+  if(!(node->left->is_leaf)) {
+    get_limits_below(node->left);
+  }
+  if(!(node->right->is_leaf)) {
+    get_limits_below(node->right);
+  }
+}
+
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const Hypers& hypers) {
+  
+  // Randomly choose a branch; if no branches, we automatically reject
+  std::vector<Node*> bbranches = branches(tree);
+  if(bbranches.size() == 0)
+    return;
+  
+  // Select the branch
+  Node* branch = rand(bbranches);
+  
+  // Calculuate tree likelihood before proposal
+  double ll_before = LogLT(tree, Y, X, hypers);
+  
+  // Calculate product of all 1/(B - A) here
+  double cutpoint_likelihood = calc_cutpoint_likelihood(tree);
+  
+  // Calculate backward transition density
+  std::vector<double> lims = get_perturb_limits(branch);
+  double backward_trans = 1.0/(lims[1] - lims[0]);
+  
+  // save old split
+  int old_feature = branch->var;
+  double old_value = branch->val;
+  double old_lower = branch->lower;
+  double old_upper = branch->upper;
+  
+  // Modify the branch
+  branch->var = hypers.SampleVar();
+  // branch->GetLimits();
+  lims = get_perturb_limits(branch);
+  branch->val = lims[0] + (lims[1] - lims[0]) * unif_rand();
+  get_limits_below(branch);
+  
+  // Calculate likelihood after proposal
+  double ll_after = LogLT(tree, Y, X, hypers);
+  
+  // Calculate product of all 1/(B-A)
+  double cutpoint_likelihood_after = calc_cutpoint_likelihood(tree);
+  
+  // Calculate forward transition density
+  double forward_trans = 1.0/(lims[1] - lims[0]);
+  
+  // Do MH
+  double log_trans_prob =
+    ll_after + log(cutpoint_likelihood_after) + log(backward_trans)
+    - ll_before - log(cutpoint_likelihood) - log(forward_trans);
+  
+  if(log(unif_rand()) > log_trans_prob) {
+    branch->var = old_feature;
+    branch->val = old_value;
+    branch->lower = old_lower;
+    branch->upper = old_upper;
+    get_limits_below(branch);
+  }
+}
+
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y, const Hypers& hypers) {
+  
+  // Compute loglik before
+  Node* tree_0 = tree;
+  double loglik_before = LogLT(tree_0, Y, X, hypers);
+  
+  // Make new tree and compute loglik after
+  Node* tree_1 = new Node;
+  tree_1->Root(hypers);
+  tree_1->GenBelow(hypers);
+  double loglik_after = LogLT(tree_1, Y, X, hypers);
+  
+  // Do MH
+  if(log(unif_rand()) < loglik_after - loglik_before) {
+    delete tree_0;
+    tree = tree_1;
+  }
+  else {
+    delete tree_1;
+  }
+  return tree;
 }
 
 double growth_prior(int leaf_depth, const Hypers& hypers) {
