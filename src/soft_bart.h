@@ -117,10 +117,11 @@ struct Opts {
   bool update_tau_mean;
   bool update_num_tree;
   bool update_sigma;
+  bool cache_trees;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
-    update_beta(false), update_gamma(false), update_tau(true),
-  update_tau_mean(false), update_num_tree(false), update_sigma(true) {
+         update_beta(false), update_gamma(false), update_tau(true),
+         update_tau_mean(false), update_num_tree(false), update_sigma(true), cache_trees(false) {
 
   num_burn = 1;
   num_thin = 1;
@@ -144,7 +145,7 @@ Opts(Rcpp::List opts_) {
   num_thin = opts_["num_thin"];
   num_save = opts_["num_save"];
   num_print = opts_["num_print"];
-
+  cache_trees = opts_["cache_trees"];
 }
 
 };
@@ -154,6 +155,7 @@ class Forest {
  private:
 
   std::vector<Node*> trees;
+  std::vector<std::vector<Node*>> saved_forests;
   Hypers hypers;
   Opts opts;
 
@@ -174,7 +176,9 @@ class Forest {
                               const arma::mat& X_test, int num_iter);
   arma::uvec get_counts();
   arma::umat get_tree_counts();
-  void set_sigma(double s);
+  void set_sigma(double sigma);
+  int num_gibbs;
+  arma::mat predict_iteration(arma::mat& X, int r_ter);
   double get_sigma();
   void set_s(const arma::vec& s_);
   arma::vec do_predict(const arma::mat& X);

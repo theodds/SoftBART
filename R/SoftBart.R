@@ -80,12 +80,14 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @param update_gamma If true, gamma is updated using a Uniform(0.5, 1) prior
 #' @param update_tau If true, tau is updated for each tree
 #' @param update_tau_mean If true, the mean of tau is updated
+#' @param cache_trees If true, we save the trees for each MCMC iteration when using the MakeForest interace
 #'
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-                 update_tau_mean = FALSE, update_sigma = TRUE) {
+                 update_tau_mean = FALSE, update_sigma = TRUE,
+                 cache_trees = FALSE) {
   out <- list()
   out$num_burn        <- num_burn
   out$num_thin        <- num_thin
@@ -101,6 +103,7 @@ Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100
   # out$update_num_tree <- update_num_tree
   out$update_num_tree <- FALSE
   out$update_sigma    <- update_sigma
+  out$cache_trees     <- cache_trees
 
   return(out)
 
