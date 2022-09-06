@@ -325,6 +325,7 @@ double update_sigma(const arma::vec& r, const arma::vec& weights,
 
 }
 
+// [[Rcpp::export]]
 double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
                     double temperature) {
 
