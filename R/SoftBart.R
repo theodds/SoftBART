@@ -24,7 +24,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
                    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
-                   temperature = 1.0) {
+                   temperature = 1.0, weights = NULL) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
@@ -47,7 +47,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
   Y                                    <- normalize_bart(Y)
   if(is.null(sigma_hat))
-    sigma_hat                          <- GetSigma(X,Y)
+    sigma_hat                          <- GetSigma(X,Y, weights = weights)
 
   out$sigma                            <- sigma_hat
   out$sigma_hat                        <- sigma_hat
@@ -185,6 +185,7 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
                   hypers$tau_rate,
                   hypers$num_tree_prob,
                   hypers$temperature,
+                  hypers$weights,
                   opts$num_burn,
                   opts$num_thin,
                   opts$num_save,
@@ -250,7 +251,7 @@ TreeSelect <- function(X,Y, X_test, hypers = NULL, tree_start = 25, opts = Opts(
   return(list(num_tree = tree_old, fit = fit))
 }
 
-GetSigma <- function(X,Y) {
+GetSigma <- function(X,Y, weights = NULL) {
 
   stopifnot(is.matrix(X) | is.data.frame(X))
 
@@ -259,7 +260,7 @@ GetSigma <- function(X,Y) {
   }
 
 
-  fit <- cv.glmnet(x = X, y = Y)
+  fit <- cv.glmnet(x = X, y = Y, weights = weights)
   fitted <- predict(fit, X)
   sigma_hat <- sqrt(mean((fitted - Y)^2))
   # sigma_hat <- 0
