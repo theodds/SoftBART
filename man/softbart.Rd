@@ -26,14 +26,15 @@ Returns a list with the following components:
   \item y_hat_test_mean: fit to the testing data, averaged over iterations
   \item sigma: posterior samples of the error standard deviations
   \item sigma_mu: posterior samples of sigma_mu, the standard deviation of the leaf node parameters
-  \item s: posterior samples of s
-  \item alpha: posterior samples of alpha
+  \item var_counts: posterior sample of group counts, used for variable importance
   \item beta: posterior samples of beta
   \item gamma: posterior samples of gamma
   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
+  \item tau_rate: Posterior samples of tau_rate
+  \item loglik_train: Log density evaluated for each observation; can be used with loo package to compute LOO-CV statistics
+  \item loglik: Sum of loglik_train for each iteration
 }
 }
 \description{
 Runs the Markov chain for the softbart model and collects the output
 }
-

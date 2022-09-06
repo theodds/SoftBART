@@ -4,10 +4,25 @@
 \alias{Hypers}
 \title{Create hyperparameter object for SoftBart}
 \usage{
-Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
-  sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
-  alpha_scale = NULL, alpha_shape_1 = 0.5, alpha_shape_2 = 1,
-  tau_rate = 10, num_tree_prob = NULL, temperature = 1)
+Hypers(
+  X,
+  Y,
+  group = NULL,
+  alpha = 1,
+  beta = 2,
+  gamma = 0.95,
+  k = 2,
+  sigma_hat = NULL,
+  shape = 1,
+  width = 0.1,
+  num_tree = 20,
+  tau_rate = 10,
+  temperature = 1,
+  log_prior = NULL,
+  zeta = 0,
+  normalize_Y = TRUE,
+  weights = NULL
+)
 }
 \arguments{
 \item{X}{NxP matrix of training data covariates.}
@@ -16,7 +31,7 @@ Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
 \item{group}{For each column of X, gives the associated group}
 
-\item{alpha}{Positive constant controlling the sparsity level}
+\item{alpha}{Parameter of the Dirichlet parameter of the Gibbs prior}
 
 \item{beta}{Parameter penalizing tree depth in the branching process prior}
 
@@ -32,13 +47,13 @@ Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
 \item{num_tree}{Number of trees in the ensemble}
 
-\item{alpha_scale}{Scale of the prior for alpha; if not provided, defaults to P}
+\item{tau_rate}{Bandwidth prior rate, such that tau ~ Exponential(tau_rate)}
 
-\item{alpha_shape_1}{Shape parameter for prior on alpha; if not provided, defaults to 0.5}
+\item{temperature}{Inverse of the temperature for tempered likelihood methods; set = 1 unless you know what you are doing}
 
-\item{alpha_shape_2}{Shape parameter for prior on alpha; if not provided, defaults to 1.0}
+\item{log_prior}{Log-prior on the number of allowed predictors for the Gibbs prior}
 
-\item{num_tree_prob}{Parameter for geometric prior on number of tree}
+\item{zeta}{If log_prior is not specified, we set the prior proportional to D^-zeta. Defaults to zeta = 0 for a uniform prior on the model size.}
 }
 \value{
 Returns a list containing the function arguments.
@@ -47,4 +62,3 @@ Returns a list containing the function arguments.
 Creates a list which holds all the hyperparameters for use with the softbart
 command.
 }
-

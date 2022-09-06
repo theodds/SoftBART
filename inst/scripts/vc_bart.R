@@ -47,7 +47,7 @@ run_vc_bart <- function(forest, y, X, M, num_burn, num_save, num_thin) {
   alpha <- 0
   for(i in 1:num_burn) {
     R <- (y - alpha) / M
-    beta <- forest$do_gibbs_weighted(X, y / M, M^2, X, 1)
+    beta <- forest$do_gibbs_weighted(X, R, M^2, X, 1)
     sigma <- forest$get_sigma()
     R <- (y - M * beta)
     alpha <- rnorm(1, mean(R), sigma / sqrt(length(R)))
@@ -55,7 +55,7 @@ run_vc_bart <- function(forest, y, X, M, num_burn, num_save, num_thin) {
   for(i in 1:num_save) {
     for(j in 1:num_thin) {
       R <- (y - alpha) / M
-      beta <- forest$do_gibbs_weighted(X, y / M, M^2, X, 1)
+      beta <- forest$do_gibbs_weighted(X, R, M^2, X, 1)
       sigma <- forest$get_sigma()
       R <- (y - M * beta)
       alpha <- rnorm(1, mean(R), sigma / sqrt(length(R)))      
@@ -68,8 +68,6 @@ run_vc_bart <- function(forest, y, X, M, num_burn, num_save, num_thin) {
 }
 
 fitted_vc <- run_vc_bart(my_forest, Y_scale, X, M, 1000, 1000, 1)
-
-mu_hat_burn <- my_forest$do_gibbs_weighted(X, Y_scale / M, M^2, X, 1000)
-mu_hat_save <- my_forest$do_gibbs_weighted(X, Y_scale / M, M^2, X, 1000)
-
-head(mu_hat_save)
+rmse <- function(x, y) sqrt(mean((x-y)^2))
+rmse(M * colMeans(fitted_vc$beta) * sd_y, mu)
+plot(M * colMeans(fitted_vc$beta) * sd_y, mu)

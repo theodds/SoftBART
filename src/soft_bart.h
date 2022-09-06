@@ -190,7 +190,8 @@ class Forest {
   arma::vec do_predict(arma::mat& X);
   arma::vec predict_iteration(const arma::mat& X, int r_ter);
   double get_sigma();
-
+  double get_sigma_mu();
+  
 
 };
 
