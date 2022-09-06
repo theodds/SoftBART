@@ -28,9 +28,10 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
+  if(is.null(weights)) weights <- rep(1, length(Y))
 
   out                                  <- list()
-
+  out$weights                          <- weights
   out$alpha                            <- alpha
   out$beta                             <- beta
   out$gamma                            <- gamma
@@ -252,7 +253,8 @@ TreeSelect <- function(X,Y, X_test, hypers = NULL, tree_start = 25, opts = Opts(
 }
 
 GetSigma <- function(X,Y, weights = NULL) {
-
+  
+  if(is.null(weights)) weights <- rep(1, length(Y))
   stopifnot(is.matrix(X) | is.data.frame(X))
 
   if(is.data.frame(X)) {
