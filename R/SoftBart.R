@@ -24,7 +24,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
                    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
                    alpha_scale = NULL, alpha_shape_1 = 0.5,
                    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
-                   temperature = 1.0, weights = NULL) {
+                   temperature = 1.0, weights = NULL, normalize_Y = TRUE) {
 
   if(is.null(alpha_scale)) alpha_scale <- ncol(X)
   if(is.null(num_tree_prob)) num_tree_prob <- 2.0 / num_tree
@@ -46,7 +46,9 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
     out$group                          <- group - 1
   }
 
-  Y                                    <- normalize_bart(Y)
+  if(normalize_Y) {
+    Y                                  <- normalize_bart(Y)
+  }
   if(is.null(sigma_hat))
     sigma_hat                          <- GetSigma(X,Y, weights = weights)
 
