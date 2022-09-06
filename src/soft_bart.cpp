@@ -3,8 +3,6 @@
 using namespace Rcpp;
 using namespace arma;
 
-#define M_2PI 6.283185307179586476925286
-
 bool RESCALE = true;
 
 Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opts_) {
@@ -590,10 +588,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
 }
 
-void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
+void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat, const arma::vec& weights,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts) {
-  IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
+  IterateGibbsNoS(forest, Y_hat, weights, hypers, X, Y, opts);
   if(opts.update_s) UpdateS(forest, hypers);
   if(opts.update_alpha) hypers.UpdateAlpha();
   if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
@@ -767,13 +765,14 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
 }
 
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
+                          const arma::vec& weights,
                           const Hypers& hypers) {
 
   std::vector<Node*> ngb = not_grand_branches(tree);
   Node* branch = rand(ngb);
 
   // Calculate likelihood before proposal
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
 
   // save old split
   int old_feature = branch->var;
@@ -788,7 +787,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->val = (branch->upper - branch->lower) * unif_rand() + branch->lower;
 
   // Calculate likelihood after proposal
-  double ll_after = LogLT(tree, Y, X, hypers);
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
 
   // Do MH
   double log_trans_prob = ll_after - ll_before;
@@ -1715,15 +1714,45 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
   vec Y_hat = predict(trees, X, hypers);
   mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+  arma::vec weights = arma::ones<arma::vec>(Y.n_elem);
 
   int num_warmup = floor(opts.num_burn / 2.0);
 
   for(int i = 0; i < num_iter; i++) {
     if(opts.update_s && (num_gibbs > num_warmup)) {
-      IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+      IterateGibbsWithS(trees, Y_hat, weights, hypers, X, Y, opts);
     }
     else {
-      IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+      IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
+    }
+    vec tmp = predict(trees, X_test, hypers);
+    Y_out.row(i) = tmp.t();
+    num_gibbs++;
+    if(num_gibbs % opts.num_print == 0) {
+      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
+        hypers.num_tree << std::endl;
+    }
+  }
+
+  return Y_out;
+
+}
+
+arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
+                                    const arma::vec& weights,
+                                    const arma::mat& X_test, int num_iter) {
+
+  vec Y_hat = predict(trees, X, hypers);
+  mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+
+  int num_warmup = floor(opts.num_burn / 2.0);
+
+  for(int i = 0; i < num_iter; i++) {
+    if(opts.update_s && (num_gibbs > num_warmup)) {
+      IterateGibbsWithS(trees, Y_hat, weights, hypers, X, Y, opts);
+    }
+    else {
+      IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
     }
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
@@ -1778,6 +1807,7 @@ RCPP_MODULE(mod_forest) {
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
     .method("get_s", &Forest::get_s)
+    .method("do_gibbs_weighted", &Forest::do_gibbs_weighted)
     .method("get_counts", &Forest::get_counts)
     .method("set_s", &Forest::set_s)
     .method("get_sigma", &Forest::get_sigma)

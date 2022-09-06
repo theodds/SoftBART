@@ -169,6 +169,9 @@ class Forest {
                      const arma::vec& Y,
                      const arma::mat& X_test, int num_iter);
   arma::vec get_s() {return hypers.s;}
+  arma::mat do_gibbs_weighted(const arma::mat& X,
+                              const arma::vec& Y, const arma::vec& weights,
+                              const arma::mat& X_test, int num_iter);
   arma::uvec get_counts();
   arma::umat get_tree_counts();
   void set_sigma(double s);
@@ -235,7 +238,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
                         const Hypers& hypers,
                         const Opts& opts);
 
-void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
+void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat, const arma::vec& weights,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts);
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
