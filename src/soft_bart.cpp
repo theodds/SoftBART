@@ -1846,6 +1846,9 @@ arma::vec Forest::do_predict(const arma::mat& X) {
   return predict(trees, X, hypers);
 }
 
+double Forest::get_sigma_mu() {
+  return hypers.sigma_mu;
+}
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1856,6 +1859,7 @@ RCPP_MODULE(mod_forest) {
     .method("get_s", &Forest::get_s)
     .method("do_gibbs_weighted", &Forest::do_gibbs_weighted)
     .method("get_counts", &Forest::get_counts)
+    .method("get_sigma_mu", &Forest::get_sigma_mu)
     .method("set_s", &Forest::set_s)
     .method("get_sigma", &Forest::get_sigma)
     .method("set_sigma", &Forest::set_sigma)

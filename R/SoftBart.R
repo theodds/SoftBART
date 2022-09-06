@@ -18,6 +18,9 @@
 #' @param alpha_shape_1 Shape parameter for prior on alpha; if not provided, defaults to 0.5
 #' @param alpha_shape_2 Shape parameter for prior on alpha; if not provided, defaults to 1.0
 #' @param num_tree_prob Parameter for geometric prior on number of tree
+#' @param temperature The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.
+#' @param weights A vector of weights, with the variance of an observation given by sigma_sq / weight
+#' @param normalize_Y Do you want to apply the standard BART max/min normalization to (-0.5, 0.5) for the outcome?
 #'
 #' @return Returns a list containing the function arguments.
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,

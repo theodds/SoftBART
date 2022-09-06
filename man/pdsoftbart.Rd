@@ -4,8 +4,16 @@
 \alias{pdsoftbart}
 \title{Partial dependence plots for SoftBart}
 \usage{
-pdsoftbart(X, Y, xind = NULL, levs = NULL, levquants = c(0.05, (1:9)/10,
-  0.95), pl = FALSE, plquants = c(0.05, 0.95), ...)
+pdsoftbart(
+  X,
+  Y,
+  xind = NULL,
+  levs = NULL,
+  levquants = c(0.05, (1:9)/10, 0.95),
+  pl = FALSE,
+  plquants = c(0.05, 0.95),
+  ...
+)
 }
 \arguments{
 \item{X}{Training data covariates}
@@ -48,4 +56,3 @@ Modified version of the pdbart function from the BayesTree package.
 Run softbart at test observations constructed so that a plot can be created 
 displaying the effect of a single variable or pair of variables.
 }
-

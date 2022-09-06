@@ -4,10 +4,27 @@
 \alias{Hypers}
 \title{Create hyperparameter object for SoftBart}
 \usage{
-Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
-  sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
-  alpha_scale = NULL, alpha_shape_1 = 0.5, alpha_shape_2 = 1,
-  tau_rate = 10, num_tree_prob = NULL, temperature = 1)
+Hypers(
+  X,
+  Y,
+  group = NULL,
+  alpha = 1,
+  beta = 2,
+  gamma = 0.95,
+  k = 2,
+  sigma_hat = NULL,
+  shape = 1,
+  width = 0.1,
+  num_tree = 20,
+  alpha_scale = NULL,
+  alpha_shape_1 = 0.5,
+  alpha_shape_2 = 1,
+  tau_rate = 10,
+  num_tree_prob = NULL,
+  temperature = 1,
+  weights = NULL,
+  normalize_Y = TRUE
+)
 }
 \arguments{
 \item{X}{NxP matrix of training data covariates.}
@@ -39,6 +56,12 @@ Hypers(X, Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 \item{alpha_shape_2}{Shape parameter for prior on alpha; if not provided, defaults to 1.0}
 
 \item{num_tree_prob}{Parameter for geometric prior on number of tree}
+
+\item{temperature}{The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.}
+
+\item{weights}{A vector of weights, with the variance of an observation given by sigma_sq / weight}
+
+\item{normalize_Y}{Do you want to apply the standard BART max/min normalization to (-0.5, 0.5) for the outcome?}
 }
 \value{
 Returns a list containing the function arguments.
@@ -47,4 +70,3 @@ Returns a list containing the function arguments.
 Creates a list which holds all the hyperparameters for use with the softbart
 command.
 }
-
