@@ -1775,10 +1775,10 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 }
 
 arma::vec Forest::predict_iteration(const arma::mat& X, int r_iter) {
-  int cpp_iter = iter - 1;
-  if(r_iter > saved_trees.size())
+  int cpp_iter = r_iter - 1;
+  if(r_iter > saved_forests.size())
     stop("Specified iteration exceeds number of saved trees");
-  return predict(saved_trees[cpp_iter], X, hypers);
+  return predict(saved_forests[cpp_iter], X, hypers);
 } 
 
 arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
