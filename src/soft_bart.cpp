@@ -7,6 +7,7 @@ bool RESCALE = true;
 
 Forest::Forest(Rcpp::List hypers_, Rcpp::List opts_) : hypers(hypers_), opts(opts_) {
   trees.resize(hypers.num_tree);
+  saved_forests.resize(0);
   for(int i = 0; i < hypers.num_tree; i++) {
     trees[i] = new Node();
     trees[i]->Root(hypers);
@@ -41,7 +42,7 @@ Node::Node() {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree) {
+              bool update_tau_mean, bool update_num_tree, bool update_sigma) {
 
   Opts out;
   out.num_burn = num_burn;
@@ -56,6 +57,7 @@ Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
   out.update_tau = update_tau;
   out.update_tau_mean = update_tau_mean;
   out.update_num_tree = update_num_tree;
+  out.update_sigma = update_sigma;
 
   return out;
 
@@ -235,7 +237,7 @@ void Node::GetLimits() {
 /*Computes the sufficient statistics Omega_inv and mu_hat described in the
   paper; mu_hat is the posterior mean of the leaf nodes, Omega_inv is that
   posterior covariance*/
-void GetSuffStats(Node* n, const arma::vec& y,
+void GetSuffStats(Node* n, const arma::vec& y, const arma::vec& weights,
                   const arma::mat& X, const Hypers& hypers,
                   arma::vec& mu_hat_out, arma::mat& Omega_inv_out) {
 
@@ -251,8 +253,8 @@ void GetSuffStats(Node* n, const arma::vec& y,
     for(int j = 0; j < num_leaves; j++) {
       w_i(j) = leafs[j]->current_weight;
     }
-    mu_hat = mu_hat + y(i) * w_i;
-    Lambda = Lambda + w_i * trans(w_i);
+    mu_hat = mu_hat + y(i) * w_i * weights(i);
+    Lambda = Lambda + w_i * trans(w_i) * weights(i);
   }
 
   Lambda = Lambda / pow(hypers.sigma, 2) * hypers.temperature;
@@ -262,7 +264,7 @@ void GetSuffStats(Node* n, const arma::vec& y,
 
 }
 
-double LogLT(Node* n, const arma::vec& Y,
+double LogLT(Node* n, const arma::vec& Y, const arma::vec& weights,
              const arma::mat& X, const Hypers& hypers) {
 
   // Rcout << "Leaves ";
@@ -272,17 +274,18 @@ double LogLT(Node* n, const arma::vec& Y,
   // Get sufficient statistics
   arma::vec mu_hat = zeros<vec>(num_leaves);
   arma::mat Omega_inv = zeros<mat>(num_leaves, num_leaves);
-  GetSuffStats(n, Y, X, hypers, mu_hat, Omega_inv);
+  GetSuffStats(n, Y, weights, X, hypers, mu_hat, Omega_inv);
 
   int N = Y.size();
 
   // Rcout << "Compute ";
-  double out = -0.5 * N * log(M_2_PI * pow(hypers.sigma,2)) * hypers.temperature;
-  out -= 0.5 * num_leaves * log(M_2_PI * pow(hypers.sigma_mu,2));
+  // double out = -0.5 * N * log(M_2PI * pow(hypers.sigma,2)) * hypers.temperature;
+  double out = 0.5 * sum(log(weights / M_2PI / pow(hypers.sigma,2))) * hypers.temperature;
+  out -= 0.5 * num_leaves * log(M_2PI * pow(hypers.sigma_mu,2));
   double val, sign;
-  log_det(val, sign, Omega_inv / M_2_PI);
+  log_det(val, sign, Omega_inv / M_2PI);
   out -= 0.5 * val;
-  out -= 0.5 * dot(Y, Y) / pow(hypers.sigma, 2) * hypers.temperature;
+  out -= 0.5 * dot(Y, Y % weights) / pow(hypers.sigma, 2) * hypers.temperature;
   out += 0.5 * dot(mu_hat, Omega_inv * mu_hat);
 
   // Rcout << "Done";
@@ -298,6 +301,27 @@ double cauchy_jacobian(double tau, double sigma_hat) {
   out = out - M_LN2 - 3.0 / 2.0 * log(tau);
 
   return out;
+
+}
+
+double update_sigma(const arma::vec& r, const arma::vec& weights,
+                    double sigma_hat, double sigma_old,
+                    double temperature) {
+
+  double SSE = dot(r,r % weights) * temperature;
+  double n = r.size() * temperature;
+
+  double shape = 0.5 * n + 1.0;
+  double scale = 2.0 / SSE;
+  double sigma_prop = pow(Rf_rgamma(shape, scale), -0.5);
+
+  double tau_prop = pow(sigma_prop, -2.0);
+  double tau_old = pow(sigma_old, -2.0);
+
+  double loglik_rat = cauchy_jacobian(tau_prop, sigma_hat) -
+    cauchy_jacobian(tau_old, sigma_hat);
+
+  return log(unif_rand()) < loglik_rat ? sigma_prop : sigma_old;
 
 }
 
@@ -322,15 +346,16 @@ double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
 
 }
 
-void Hypers::UpdateSigma(const arma::vec& r) {
-  sigma = update_sigma(r, sigma_hat, sigma, temperature);
+void Hypers::UpdateSigma(const arma::vec& r, const arma::vec& weights) {
+  sigma = update_sigma(r, weights, sigma_hat, sigma, temperature);
 }
 
 void Hypers::UpdateSigmaMu(const arma::vec& means) {
   sigma_mu = update_sigma(means, sigma_mu_hat, sigma_mu);
 }
 
-void Node::UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers) {
+void Node::UpdateMu(const arma::vec& Y, const arma::vec& weights,
+                    const arma::mat& X, const Hypers& hypers) {
 
   std::vector<Node*> leafs = leaves(this);
   int num_leaves = leafs.size();
@@ -338,7 +363,7 @@ void Node::UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers
   // Get mean and covariance
   vec mu_hat = zeros<vec>(num_leaves);
   mat Omega_inv = zeros<mat>(num_leaves, num_leaves);
-  GetSuffStats(this, Y, X, hypers, mu_hat, Omega_inv);
+  GetSuffStats(this, Y, weights, X, hypers, mu_hat, Omega_inv);
 
   vec mu_samp = rmvnorm(mu_hat, Omega_inv);
   for(int i = 0; i < num_leaves; i++) {
@@ -461,6 +486,7 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
 
 Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
+                        const arma::vec& weights,
                         const arma::mat& X_test,
                         Hypers& hypers,
                         const Opts& opts) {
@@ -477,10 +503,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     // Don't update s for half of the burn-in
     if(i < opts.num_burn / 2) {
       // Rcout << "Iterating Gibbs\n";
-      IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
+      IterateGibbsNoS(forest, Y_hat, weights, hypers, X, Y, opts);
     }
     else {
-      IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+      IterateGibbsWithS(forest, Y_hat, weights, hypers, X, Y, opts);
     }
 
     if((i+1) % opts.num_print == 0) {
@@ -512,7 +538,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
     for(int b = 0; b < opts.num_thin; b++) {
-      IterateGibbsWithS(forest, Y_hat, hypers, X, Y, opts);
+        IterateGibbsWithS(forest, Y_hat, weights, hypers, X, Y, opts);
     }
 
     // Save stuff
@@ -526,7 +552,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
     beta(i) = hypers.beta;
     gamma(i) = hypers.gamma;
     tau_rate(i) = hypers.tau_rate;
-    loglik_train.row(i) = trans(loglik_data(Y,Y_hat,hypers));
+    loglik_train.row(i) = trans(loglik_data(Y,weights,Y_hat,hypers));
     loglik(i) = sum(loglik_train.row(i));
     num_tree(i) = hypers.num_tree;
 
@@ -563,27 +589,28 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
 }
 
-void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
+void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat, const arma::vec& weights,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts) {
-  IterateGibbsNoS(forest, Y_hat, hypers, X, Y, opts);
+  IterateGibbsNoS(forest, Y_hat, weights, hypers, X, Y, opts);
   if(opts.update_s) UpdateS(forest, hypers);
   if(opts.update_alpha) hypers.UpdateAlpha();
   if(opts.update_num_tree) update_num_tree(forest, hypers, opts, Y, Y - Y_hat, X);
 }
 
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
+                     const arma::vec& weights,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts) {
 
 
   // Rcout << "Backfitting trees";
-  TreeBackfit(forest, Y_hat, hypers, X, Y, opts);
+  TreeBackfit(forest, Y_hat, weights, hypers, X, Y, opts);
   arma::vec res = Y - Y_hat;
   arma::vec means = get_means(forest);
 
   // Rcout << "Doing other updates";
-  hypers.UpdateSigma(res);
+  if(opts.update_sigma) hypers.UpdateSigma(res, weights);
   if(opts.update_sigma_mu) hypers.UpdateSigmaMu(means);
   if(opts.update_beta) hypers.UpdateBeta(forest);
   if(opts.update_gamma) hypers.UpdateGamma(forest);
@@ -593,10 +620,12 @@ void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
 }
 
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights, Hypers& hypers, const arma::mat& X,
+                 const arma::vec& Y,
                  const Opts& opts) {
 
   double MH_BD = 0.7;
+  double MH_PRIOR = 0.4;
 
   int num_tree = hypers.num_tree;
   for(int t = 0; t < num_tree; t++) {
@@ -604,18 +633,21 @@ void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
     arma::vec Y_star = Y_hat - predict(forest[t], X, hypers);
     arma::vec res = Y - Y_star;
 
+    if(unif_rand() < MH_PRIOR) {
+      forest[t] = draw_prior(forest[t], X, res, weights, hypers);
+    }
     if(forest[t]->is_leaf || unif_rand() < MH_BD) {
       // Rcout << "BD step";
-      birth_death(forest[t], X, res, hypers);
+        birth_death(forest[t], X, res, weights, hypers);
       // Rcout << "Done";
     }
     else {
       // Rcout << "Change step";
-      change_decision_rule(forest[t], X, res, hypers);
+      perturb_decision_rule(forest[t], X, res, weights, hypers);
       // Rcout << "Done";
     }
-    if(opts.update_tau) forest[t]->UpdateTau(res, X, hypers);
-    forest[t]->UpdateMu(res, X, hypers);
+    if(opts.update_tau) forest[t]->UpdateTau(res, weights, X, hypers);
+    forest[t]->UpdateMu(res, weights, X, hypers);
     Y_hat = Y_star + predict(forest[t], X, hypers);
   }
 }
@@ -625,21 +657,22 @@ double activation(double x, double c, double tau) {
 }
 
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 const Hypers& hypers) {
+                 const arma::vec& weights, Hypers& hypers) {
 
 
   double p_birth = probability_node_birth(tree);
 
   if(unif_rand() < p_birth) {
-    node_birth(tree, X, Y, hypers);
+    node_birth(tree, X, Y, weights, hypers);
   }
   else {
-    node_death(tree, X, Y, hypers);
+    node_death(tree, X, Y, weights, hypers);
   }
 }
 
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers) {
+                const arma::vec& weights,
+                Hypers& hypers) {
 
   // Rcout << "Sample leaf";
   double leaf_probability = 0.0;
@@ -651,7 +684,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood of current state
   // Rcout << "Current likelihood";
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
   ll_before += log(1.0 - leaf_prior);
 
   // Get transition probability
@@ -664,7 +697,7 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 
   // Get likelihood after
   // Rcout << "New Likelihood";
-  double ll_after = LogLT(tree, Y, X, hypers);
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
   ll_after += log(leaf_prior) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers)) +
     log(1.0 - growth_prior(leaf_depth + 1, hypers));
@@ -687,7 +720,8 @@ void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
 }
 
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers) {
+                const arma::vec& weights,
+                Hypers& hypers) {
 
   // Select branch to kill Children
   double p_not_grand = 0.0;
@@ -698,7 +732,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   double leaf_prob = growth_prior(leaf_depth - 1, hypers);
   double left_prior = growth_prior(leaf_depth, hypers);
   double right_prior = growth_prior(leaf_depth, hypers);
-  double ll_before = LogLT(tree, Y, X, hypers) +
+  double ll_before = LogLT(tree, Y, weights, X, hypers) +
     log(1.0 - left_prior) + log(1.0 - right_prior) + log(leaf_prob);
 
   // Compute forward transition prob
@@ -712,7 +746,7 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->is_leaf = true;
 
   // Compute likelihood after
-  double ll_after = LogLT(tree, Y, X, hypers) + log(1.0 - leaf_prob);
+  double ll_after = LogLT(tree, Y, weights, X, hypers) + log(1.0 - leaf_prob);
 
   // Compute backwards transition
   std::vector<Node*> leafs = leaves(tree);
@@ -732,13 +766,14 @@ void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
 }
 
 void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
+                          const arma::vec& weights,
                           const Hypers& hypers) {
 
   std::vector<Node*> ngb = not_grand_branches(tree);
   Node* branch = rand(ngb);
 
   // Calculate likelihood before proposal
-  double ll_before = LogLT(tree, Y, X, hypers);
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
 
   // save old split
   int old_feature = branch->var;
@@ -753,7 +788,7 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
   branch->val = (branch->upper - branch->lower) * unif_rand() + branch->lower;
 
   // Calculate likelihood after proposal
-  double ll_after = LogLT(tree, Y, X, hypers);
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
 
   // Do MH
   double log_trans_prob = ll_after - ll_before;
@@ -765,6 +800,170 @@ void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
     branch->upper = old_upper;
   }
 
+}
+
+void branches(Node* n, std::vector<Node*>& branch_vec) {
+  if(!(n->is_leaf)) {
+    branch_vec.push_back(n);
+    branches(n->left, branch_vec);
+    branches(n->right, branch_vec);
+  }
+}
+
+std::vector<Node*> branches(Node* root) {
+  std::vector<Node*> branch_vec;
+  branch_vec.resize(0);
+  branches(root, branch_vec);
+  return branch_vec;
+}
+
+
+
+double calc_cutpoint_likelihood(Node* node) {
+  if(node->is_leaf) return 1;
+  
+  double out = 1.0/(node->upper - node->lower);
+  out = out * calc_cutpoint_likelihood(node->left);
+  out = out * calc_cutpoint_likelihood(node->right);
+  
+  return out;
+}
+
+std::vector<double> get_perturb_limits(Node* branch) {
+  double min = 0.0;
+  double max = 1.0;
+  
+  Node* n = branch;
+  while(!(n->is_root)) {
+    if(n->is_left()) {
+      n = n->parent;
+      if(n->var == branch->var) {
+        if(n->val > min) {
+          min = n->val;
+        }
+      }
+    }
+    else {
+      n = n->parent;
+      if(n->var == branch->var) {
+        if(n->val < max) {
+          max = n->val;
+        }
+      }
+    }
+  }
+  std::vector<Node*> left_branches = branches(n->left);
+  std::vector<Node*> right_branches = branches(n->right);
+  for(int i = 0; i < left_branches.size(); i++) {
+    if(left_branches[i]->var == branch->var) {
+      if(left_branches[i]->val > min)
+        min = left_branches[i]->val;
+    }
+  }
+  for(int i = 0; i < right_branches.size(); i++) {
+    if(right_branches[i]->var == branch->var) {
+      if(right_branches[i]->val < max) {
+        max = right_branches[i]->val;
+      }
+    }
+  }
+  
+  std::vector<double> out; out.push_back(min); out.push_back(max);
+  return out;
+}
+
+void get_limits_below(Node* node) {
+  node->GetLimits();
+  if(!(node->left->is_leaf)) {
+    get_limits_below(node->left);
+  }
+  if(!(node->right->is_leaf)) {
+    get_limits_below(node->right);
+  }
+}
+
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const arma::vec& weights,
+                           Hypers& hypers) {
+  
+  // Randomly choose a branch; if no branches, we automatically reject
+  std::vector<Node*> bbranches = branches(tree);
+  if(bbranches.size() == 0)
+    return;
+  
+  // Select the branch
+  Node* branch = rand(bbranches);
+  
+  // Calculuate tree likelihood before proposal
+  double ll_before = LogLT(tree, Y, weights, X, hypers);
+  
+  // Calculate product of all 1/(B - A) here
+  double cutpoint_likelihood = calc_cutpoint_likelihood(tree);
+  
+  // Calculate backward transition density
+  std::vector<double> lims = get_perturb_limits(branch);
+  double backward_trans = 1.0/(lims[1] - lims[0]);
+  
+  // save old split
+  int old_feature = branch->var;
+  double old_value = branch->val;
+  double old_lower = branch->lower;
+  double old_upper = branch->upper;
+  
+  // Modify the branch
+  branch->var = hypers.SampleVar();
+  // branch->GetLimits();
+  lims = get_perturb_limits(branch);
+  branch->val = lims[0] + (lims[1] - lims[0]) * unif_rand();
+  get_limits_below(branch);
+  
+  // Calculate likelihood after proposal
+  double ll_after = LogLT(tree, Y, weights, X, hypers);
+  
+  // Calculate product of all 1/(B-A)
+  double cutpoint_likelihood_after = calc_cutpoint_likelihood(tree);
+  
+  // Calculate forward transition density
+  double forward_trans = 1.0/(lims[1] - lims[0]);
+  
+  // Do MH
+  double log_trans_prob =
+    ll_after + log(cutpoint_likelihood_after) + log(backward_trans)
+    - ll_before - log(cutpoint_likelihood) - log(forward_trans);
+  
+  if(log(unif_rand()) > log_trans_prob) {
+    branch->var = old_feature;
+    branch->val = old_value;
+    branch->lower = old_lower;
+    branch->upper = old_upper;
+    get_limits_below(branch);
+  }
+}
+
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights, Hypers& hypers) {
+  
+  // Compute loglik before
+  Node* tree_0 = tree;
+  double loglik_before = LogLT(tree_0, Y, weights, X, hypers);
+  
+  // Make new tree and compute loglik after
+  Node* tree_1 = new Node;
+  tree_1->Root(hypers);
+  tree_1->GenBelow(hypers);
+  double loglik_after = LogLT(tree_1, Y, weights, X, hypers);
+  
+  // Do MH
+  if(log(unif_rand()) < loglik_after - loglik_before) {
+    delete tree_0;
+    tree = tree_1;
+  }
+  else {
+    delete tree_1;
+  }
+  return tree;
 }
 
 double growth_prior(int leaf_depth, const Hypers& hypers) {
@@ -1020,18 +1219,46 @@ Node* rand(std::vector<Node*> ngb) {
   return ngb[i];
 }
 
-// double loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
-//   vec res = Y - Y_hat;
-//   double out = -0.5 * Y.size() * log(M_2_PI * pow(hypers.sigma,2.0)) -
-//     dot(res, res) * 0.5 / pow(hypers.sigma,2.0);
-//   return out;
-// }
+// Assume: parent, left, and right are set appropriately (taken care of by AddLeaves)
+void copy_node(Node* nn, Node* n) {
+  nn->is_leaf = n->is_leaf;
+  nn->is_root = n->is_root;
+  nn->var = n->var;
+  nn->val = n->val;
+  nn->lower = n->lower;
+  nn->upper = n->upper;
+  nn->tau = n->tau;
+  nn->mu = n->mu;
+  nn->current_weight = n->current_weight;
+  if(!n->is_leaf) {
+    nn->AddLeaves();
+    copy_node(nn->left, n->left);
+    copy_node(nn->right, n->right);
+  }
+}
 
-arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers) {
+Node* copy_tree(Node* root, Hypers& hypers) {
+  Node* nroot = new Node();
+  nroot->Root(hypers);
+  copy_node(nroot, root);
+  return nroot;
+}
+
+std::vector<Node*> copy_forest(std::vector<Node*> forest, Hypers& hypers) {
+  std::vector<Node*> nforest(forest.size());
+  for(int i = 0; i < forest.size(); i++) {
+    nforest[i] = copy_tree(forest[i], hypers);
+  }
+  return nforest;
+}
+
+arma::vec loglik_data(const arma::vec& Y, const arma::vec& weights,
+                      const arma::vec& Y_hat, const Hypers& hypers) {
   vec res = Y - Y_hat;
   vec out = zeros<vec>(Y.size());
   for(int i = 0; i < Y.size(); i++) {
-    out(i) = -0.5 * log(M_2_PI * pow(hypers.sigma,2)) - 0.5 * pow(res(i) / hypers.sigma, 2);
+    out(i) = -0.5 * log(M_2PI * pow(hypers.sigma,2) / weights(i))
+      - 0.5 * weights(i) * pow(res(i) / hypers.sigma, 2);
   }
   return out;
 }
@@ -1044,23 +1271,24 @@ List SoftBart(const arma::mat& X, const arma::vec& Y, const arma::mat& X_test,
               double sigma_hat, double k, double alpha_scale,
               double alpha_shape_1, double alpha_shape_2, double tau_rate,
               double num_tree_prob,
-              double temperature,
+              double temperature, const arma::vec& weights,
               int num_burn,
               int num_thin, int num_save, int num_print, bool update_sigma_mu,
               bool update_s, bool update_alpha, bool update_beta, bool update_gamma,
-              bool update_tau, bool update_tau_mean, bool update_num_tree) {
-
+              bool update_tau, bool update_tau_mean, bool update_num_tree,
+              bool update_sigma) {
 
   Opts opts = InitOpts(num_burn, num_thin, num_save, num_print, update_sigma_mu,
                        update_s, update_alpha, update_beta, update_gamma,
-                       update_tau, update_tau_mean, update_num_tree);
+                       update_tau, update_tau_mean, update_num_tree,
+                       update_sigma);
 
   Hypers hypers = InitHypers(X, group, sigma_hat, alpha, beta, gamma, k, width,
                              shape, num_tree, alpha_scale, alpha_shape_1,
                              alpha_shape_2, tau_rate, num_tree_prob, temperature);
 
   // Rcout << "Doing soft_bart\n";
-  return do_soft_bart(X,Y,X_test,hypers,opts);
+  return do_soft_bart(X, Y, weights, X_test, hypers, opts);
 
 }
 
@@ -1084,25 +1312,27 @@ void Node::SetTau(double tau_new) {
 }
 
 double Node::loglik_tau(double tau_new, const arma::mat& X,
-                        const arma::vec& Y, const Hypers& hypers) {
+                        const arma::vec& Y, const arma::vec& weights,
+                        const Hypers& hypers) {
 
   double tau_old = tau;
   SetTau(tau_new);
-  double out = LogLT(this, Y, X, hypers);
+  double out = LogLT(this, Y, weights, X, hypers);
   SetTau(tau_old);
   return out;
 
 }
 
 void Node::UpdateTau(const arma::vec& Y,
+                     const arma::vec& weights,
                      const arma::mat& X,
                      const Hypers& hypers) {
 
   double tau_old = tau;
   double tau_new = tau_proposal(tau);
 
-  double loglik_new = loglik_tau(tau_new, X, Y, hypers) + logprior_tau(tau_new, hypers.tau_rate);
-  double loglik_old = loglik_tau(tau_old, X, Y, hypers) + logprior_tau(tau_old, hypers.tau_rate);
+  double loglik_new = loglik_tau(tau_new, X, Y, weights, hypers) + logprior_tau(tau_new, hypers.tau_rate);
+  double loglik_old = loglik_tau(tau_old, X, Y, weights, hypers) + logprior_tau(tau_old, hypers.tau_rate);
   double new_to_old = log_tau_trans(tau_old);
   double old_to_new = log_tau_trans(tau_new);
 
@@ -1184,22 +1414,22 @@ double tau_proposal(double tau) {
   // return tau + w;
 }
 
-double Hypers::loglik_tau(double tau,
-                          const std::vector<Node*>& forest,
-                          const arma::mat& X, const arma::vec& Y) {
+// double Hypers::loglik_tau(double tau,
+//                           const std::vector<Node*>& forest,
+//                           const arma::mat& X, const arma::vec& Y) {
 
-  double tau_old = width;
-  width = tau;
-  vec Y_hat = predict(forest, X, *this);
-  double SSE = dot(Y - Y_hat, Y - Y_hat);
-  double sigma_sq = pow(sigma, 2);
+//   double tau_old = width;
+//   width = tau;
+//   vec Y_hat = predict(forest, X, *this);
+//   double SSE = dot(Y - Y_hat, Y - Y_hat);
+//   double sigma_sq = pow(sigma, 2);
 
-  double loglik = -0.5 * Y.size() * log(sigma_sq) - 0.5 * SSE / sigma_sq;
+//   double loglik = -0.5 * Y.size() * log(sigma_sq) - 0.5 * SSE / sigma_sq;
 
-  width = tau_old;
-  return loglik;
+//   width = tau_old;
+//   return loglik;
 
-}
+// }
 
 double log_tau_trans(double tau_new) {
   return -log(tau_new);
@@ -1518,15 +1748,16 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
 
   vec Y_hat = predict(trees, X, hypers);
   mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+  arma::vec weights = arma::ones<arma::vec>(Y.n_elem);
 
   int num_warmup = floor(opts.num_burn / 2.0);
 
   for(int i = 0; i < num_iter; i++) {
     if(opts.update_s && (num_gibbs > num_warmup)) {
-      IterateGibbsWithS(trees, Y_hat, hypers, X, Y, opts);
+      IterateGibbsWithS(trees, Y_hat, weights, hypers, X, Y, opts);
     }
     else {
-      IterateGibbsNoS(trees, Y_hat, hypers, X, Y, opts);
+      IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
     }
     vec tmp = predict(trees, X_test, hypers);
     Y_out.row(i) = tmp.t();
@@ -1534,6 +1765,48 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     if(num_gibbs % opts.num_print == 0) {
       Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
         hypers.num_tree << std::endl;
+    }
+    if(opts.cache_trees) {
+      saved_forests.push_back(copy_forest(trees, hypers));
+    }
+  }
+
+  return Y_out;
+
+}
+
+arma::vec Forest::predict_iteration(const arma::mat& X, int r_iter) {
+  int cpp_iter = r_iter - 1;
+  if(r_iter > saved_forests.size())
+    stop("Specified iteration exceeds number of saved trees");
+  return predict(saved_forests[cpp_iter], X, hypers);
+} 
+
+arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
+                                    const arma::vec& weights,
+                                    const arma::mat& X_test, int num_iter) {
+
+  vec Y_hat = predict(trees, X, hypers);
+  mat Y_out = zeros<mat>(num_iter, X_test.n_rows);
+
+  int num_warmup = floor(opts.num_burn / 2.0);
+
+  for(int i = 0; i < num_iter; i++) {
+    if(opts.update_s && (num_gibbs > num_warmup)) {
+      IterateGibbsWithS(trees, Y_hat, weights, hypers, X, Y, opts);
+    }
+    else {
+      IterateGibbsNoS(trees, Y_hat, weights, hypers, X, Y, opts);
+    }
+    vec tmp = predict(trees, X_test, hypers);
+    Y_out.row(i) = tmp.t();
+    num_gibbs++;
+    if(num_gibbs % opts.num_print == 0) {
+      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
+        hypers.num_tree << std::endl;
+    }
+    if(opts.cache_trees) {
+      saved_forests.push_back(copy_forest(trees, hypers));
     }
   }
 
@@ -1573,6 +1846,9 @@ arma::vec Forest::do_predict(const arma::mat& X) {
   return predict(trees, X, hypers);
 }
 
+double Forest::get_sigma_mu() {
+  return hypers.sigma_mu;
+}
 RCPP_MODULE(mod_forest) {
 
   class_<Forest>("Forest")
@@ -1581,12 +1857,15 @@ RCPP_MODULE(mod_forest) {
     .constructor<Rcpp::List, Rcpp::List>()
     .method("do_gibbs", &Forest::do_gibbs)
     .method("get_s", &Forest::get_s)
+    .method("do_gibbs_weighted", &Forest::do_gibbs_weighted)
     .method("get_counts", &Forest::get_counts)
+    .method("get_sigma_mu", &Forest::get_sigma_mu)
     .method("set_s", &Forest::set_s)
     .method("get_sigma", &Forest::get_sigma)
     .method("set_sigma", &Forest::set_sigma)
     .method("do_predict", &Forest::do_predict)
     .method("get_tree_counts", &Forest::get_tree_counts)
+    .method("predict_iteration", &Forest::predict_iteration)
     .field("num_gibbs", &Forest::num_gibbs);
 
 }

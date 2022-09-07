@@ -36,4 +36,3 @@ Returns a list with the following components:
 \description{
 Runs the Markov chain for the softbart model and collects the output
 }
-

@@ -4,10 +4,21 @@
 \alias{Opts}
 \title{MCMC options for SoftBart}
 \usage{
-Opts(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
-  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
-  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
-  update_tau_mean = FALSE)
+Opts(
+  num_burn = 2500,
+  num_thin = 1,
+  num_save = 2500,
+  num_print = 100,
+  update_sigma_mu = TRUE,
+  update_s = TRUE,
+  update_alpha = TRUE,
+  update_beta = FALSE,
+  update_gamma = FALSE,
+  update_tau = TRUE,
+  update_tau_mean = FALSE,
+  update_sigma = TRUE,
+  cache_trees = FALSE
+)
 }
 \arguments{
 \item{num_burn}{Number of warmup iterations for the chain.}
@@ -31,6 +42,10 @@ Opts(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
 \item{update_tau}{If true, tau is updated for each tree}
 
 \item{update_tau_mean}{If true, the mean of tau is updated}
+
+\item{update_sigma}{If true, sigma is updated, with a half-Cauchy prior on sigma centered at the initial guess}
+
+\item{cache_trees}{If true, we save the trees for each MCMC iteration when using the MakeForest interace}
 }
 \value{
 Returns a list containing the function arguments
@@ -38,4 +53,3 @@ Returns a list containing the function arguments
 \description{
 Creates a list which provides the parameters for running the Markov chain.
 }
-

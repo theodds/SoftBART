@@ -74,7 +74,7 @@ fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test,
     
 ## Plot the fit (note: interval estimates are not prediction intervals, 
 ## so they do not cover the predictions at the nominal rate)
-plot(fit)
+plot.softbart(fit)
 
 ## Look at posterior model inclusion probabilities for each predictor. 
 

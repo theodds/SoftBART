@@ -35,7 +35,7 @@ struct Hypers {
   double alpha_shape_1;
   double alpha_shape_2;
 
-  void UpdateSigma(const arma::vec& r);
+  void UpdateSigma(const arma::vec& r, const arma::vec& weights);
   void UpdateSigmaMu(const arma::vec& means);
   void UpdateAlpha();
   void UpdateGamma(std::vector<Node*>& forest);
@@ -43,11 +43,11 @@ struct Hypers {
   void UpdateTauRate(const std::vector<Node*>& forest);
 
   // For updating tau
-  double loglik_tau(double tau,
-                    const std::vector<Node*>& forest,
-                    const arma::mat& X, const arma::vec& Y);
-  void update_tau(std::vector<Node*>& forest,
-                  const arma::mat& X, const arma::vec& Y);
+  // double loglik_tau(double tau,
+  //                   const std::vector<Node*>& forest,
+  //                   const arma::mat& X, const arma::vec& Y);
+  // void update_tau(std::vector<Node*>& forest,
+  //                 const arma::mat& X, const arma::vec& Y);
 
   int SampleVar() const;
 
@@ -87,10 +87,13 @@ struct Node {
   void GenBelow(const Hypers& hypers);
   void GetW(const arma::mat& X, int i);
   void DeleteLeaves();
-  void UpdateMu(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
-  void UpdateTau(const arma::vec& Y, const arma::mat& X, const Hypers& hypers);
+  void UpdateMu(const arma::vec& Y, const arma::vec& weights,
+                const arma::mat& X, const Hypers& hypers);
+  void UpdateTau(const arma::vec& Y, const arma::vec& weights,
+                 const arma::mat& X, const Hypers& hypers);
   void SetTau(double tau_new);
-  double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y, const Hypers& hypers);
+  double loglik_tau(double tau_new, const arma::mat& X, const arma::vec& Y,
+                    const arma::vec& weights, const Hypers& hypers);
 
   Node();
   ~Node();
@@ -113,10 +116,12 @@ struct Opts {
   bool update_tau;
   bool update_tau_mean;
   bool update_num_tree;
+  bool update_sigma;
+  bool cache_trees;
 
 Opts() : update_sigma_mu(true), update_s(true), update_alpha(true),
-    update_beta(false), update_gamma(false), update_tau(true),
-    update_tau_mean(false), update_num_tree(false) {
+         update_beta(false), update_gamma(false), update_tau(true),
+         update_tau_mean(false), update_num_tree(false), update_sigma(true), cache_trees(false) {
 
   num_burn = 1;
   num_thin = 1;
@@ -135,11 +140,12 @@ Opts(Rcpp::List opts_) {
   update_tau = opts_["update_tau"];
   update_tau_mean = opts_["update_tau_mean"];
   update_num_tree = opts_["update_num_tree"];
+  update_sigma = opts_["update_sigma"];
   num_burn = opts_["num_burn"];
   num_thin = opts_["num_thin"];
   num_save = opts_["num_save"];
   num_print = opts_["num_print"];
-
+  cache_trees = opts_["cache_trees"];
 }
 
 };
@@ -149,6 +155,7 @@ class Forest {
  private:
 
   std::vector<Node*> trees;
+  std::vector<std::vector<Node*>> saved_forests;
   Hypers hypers;
   Opts opts;
 
@@ -164,14 +171,18 @@ class Forest {
                      const arma::vec& Y,
                      const arma::mat& X_test, int num_iter);
   arma::vec get_s() {return hypers.s;}
+  arma::mat do_gibbs_weighted(const arma::mat& X,
+                              const arma::vec& Y, const arma::vec& weights,
+                              const arma::mat& X_test, int num_iter);
   arma::uvec get_counts();
   arma::umat get_tree_counts();
-  void set_sigma(double s);
+  void set_sigma(double sigma);
+  int num_gibbs;
+  arma::vec predict_iteration(const arma::mat& X, int r_ter);
   double get_sigma();
   void set_s(const arma::vec& s_);
   arma::vec do_predict(const arma::mat& X);
-  int num_gibbs;
-
+  double get_sigma_mu();
 
 };
 
@@ -179,7 +190,7 @@ class Forest {
 Opts InitOpts(int num_burn, int num_thin, int num_save, int num_print,
               bool update_sigma_mu, bool update_s, bool update_alpha,
               bool update_beta, bool update_gamma, bool update_tau,
-              bool update_tau_mean, bool update_num_tree);
+              bool update_tau_mean, bool update_num_tree, bool update_sigma);
 
 
 Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double beta,
@@ -188,18 +199,22 @@ Hypers InitHypers(const arma::mat& X, double sigma_hat, double alpha, double bet
                   double alpha_shape_2, double tau_rate, double num_tree_prob,
                   double temperature);
 
-void GetSuffStats(Node* n, const arma::vec& y,
+void GetSuffStats(Node* n, const arma::vec& y, const arma::vec& weights,
                   const arma::mat& X, const Hypers& hypers,
                   arma::vec& mu_hat_out, arma::mat& Omega_inv_out);
 
-double LogLT(Node* n, const arma::vec& Y,
+double LogLT(Node* n, const arma::vec& Y, const arma::vec& weights,
              const arma::mat& X, const Hypers& hypers);
 
 double cauchy_jacobian(double tau, double sigma_hat);
 
-double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old,
+double update_sigma(const arma::vec& r,
+                    double sigma_hat, double sigma_old,
                     double temperature = 1.0);
-arma::vec loglik_data(const arma::vec& Y, const arma::vec& Y_hat, const Hypers& hypers);
+double update_sigma(const arma::vec& r, const arma::vec& weights,
+                    double sigma_hat, double sigma_old,
+                    double temperature = 1.0);
+arma::vec loglik_data(const arma::vec& Y, const arma::vec& weights, const arma::vec& Y_hat, const Hypers& hypers);
 arma::vec predict(const std::vector<Node*>& forest,
                   const arma::mat& X,
                   const Hypers& hypers);
@@ -221,28 +236,31 @@ std::vector<Node*> init_forest(const arma::mat& X, const arma::vec& Y,
 
 Rcpp::List do_soft_bart(const arma::mat& X,
                         const arma::vec& Y,
+                        const arma::vec& weights,
                         const arma::mat& X_test,
                         const Hypers& hypers,
                         const Opts& opts);
 
-void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat,
+void IterateGibbsWithS(std::vector<Node*>& forest, arma::vec& Y_hat, const arma::vec& weights,
                        Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                        const Opts& opts);
 void IterateGibbsNoS(std::vector<Node*>& forest, arma::vec& Y_hat,
+                     const arma::vec& weights,
                      Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                      const Opts& opts);
 void TreeBackfit(std::vector<Node*>& forest, arma::vec& Y_hat,
-                 const Hypers& hypers, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights,
+                 Hypers& hypers, const arma::mat& X, const arma::vec& Y,
                  const Opts& opts);
 double activation(double x, double c, double tau);
 void birth_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                 const Hypers& hypers);
+                 const arma::vec& weights, Hypers& hypers);
 void node_birth(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
+                const arma::vec& weights, Hypers& hypers);
 void node_death(Node* tree, const arma::mat& X, const arma::vec& Y,
-                const Hypers& hypers);
-void change_decision_rule(Node* tree, const arma::mat& X, const arma::vec& Y,
-                          const Hypers& hypers);
+                const arma::vec& weights, Hypers& hypers);
+Node* draw_prior(Node* tree, const arma::mat& X, const arma::vec& Y,
+                 const arma::vec& weights, Hypers& hypers);
 double growth_prior(int leaf_depth, const Hypers& hypers);
 Node* birth_node(Node* tree, double* leaf_node_probability);
 double probability_node_birth(Node* tree);
@@ -261,6 +279,9 @@ double forest_loglik(std::vector<Node*>& forest, double gamma, double beta);
 double tree_loglik(Node* node, int node_depth, double gamma, double beta);
 Node* rand(std::vector<Node*> ngb);
 void UpdateS(std::vector<Node*>& forest, Hypers& hypers);
+void copy_node(Node* nn, Node* n);
+Node* copy_tree(Node* root, Hypers& hypers);
+std::vector<Node*> copy_forest(std::vector<Node*> forest, Hypers& hypers);
 
 // For tau
 bool do_mh(double loglik_new, double loglik_old,
@@ -399,5 +420,16 @@ double slice_sampler(double x0, rho_loglik& g, double w,
 
 }
 
+// PERTURB STUFF
+void branches(Node* n, std::vector<Node*>& branch_vec);
+std::vector<Node*> branches(Node* root);
+double calc_cutpoint_likelihood(Node* node);
+std::vector<double> get_perturb_limits(Node* branch);
+
+void perturb_decision_rule(Node* tree,
+                           const arma::mat& X,
+                           const arma::vec& Y,
+                           const arma::vec& weights,
+                           Hypers& hypers);
 
 #endif
