@@ -1,18 +1,17 @@
 Package: SoftBart
 Type: Package
-Title: A package for implementing the SoftBart algorithm.
-Version: 1.0
-Date: 2017-05-09
+Title: A Package for Implementing the SoftBart Algorithm
+Version: 1.0.0
+Date: 2022-09-09
+Encoding: UTF-8
 Author: Antonio Linero
-Maintainer: Antonio Linero <arlinero@stat.fsu.edu>
-Description: Implements the SoftBart model of described by Linero (2017), with 
-            the optional use of a sparsity-inducing prior to allow for variable 
-            selection. For usability, the package maintains the same style as 
-            the BayesTree package. 
-            More details about what the package does. See <http://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file> for details on how to write this part.
+Maintainer: Antonio Linero <antonio.linero@austin.utexas.edu>
+Description: Implements the SoftBart model of described by Linero and Yang (2018), with the optional use of a sparsity-inducing prior to allow for variable selection. For usability, the package maintains the same style as the BayesTree package.
 License: GPL (>= 2)
-Depends: scales, glmnet, Rcpp
 Imports:
-    Rcpp (>= 0.12.9)
+    Rcpp (>= 0.12.9),
+    glmnet (>= 4.0.0),
+    scales (>= 1.1.1),
+    methods
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.2.1

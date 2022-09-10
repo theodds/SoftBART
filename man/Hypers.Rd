@@ -55,6 +55,8 @@ Hypers(
 
 \item{alpha_shape_2}{Shape parameter for prior on alpha; if not provided, defaults to 1.0}
 
+\item{tau_rate}{Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10}
+
 \item{num_tree_prob}{Parameter for geometric prior on number of tree}
 
 \item{temperature}{The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.}

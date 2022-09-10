@@ -17,6 +17,7 @@
 #' @param alpha_scale Scale of the prior for alpha; if not provided, defaults to P
 #' @param alpha_shape_1 Shape parameter for prior on alpha; if not provided, defaults to 0.5
 #' @param alpha_shape_2 Shape parameter for prior on alpha; if not provided, defaults to 1.0
+#' @param tau_rate Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10
 #' @param num_tree_prob Parameter for geometric prior on number of tree
 #' @param temperature The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.
 #' @param weights A vector of weights, with the variance of an observation given by sigma_sq / weight
@@ -85,7 +86,7 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 #' @param update_gamma If true, gamma is updated using a Uniform(0.5, 1) prior
 #' @param update_tau If true, tau is updated for each tree
 #' @param update_tau_mean If true, the mean of tau is updated
-#' @param cache_trees If true, we save the trees for each MCMC iteration when using the MakeForest interace
+#' @param cache_trees If true, we save the trees for each MCMC iteration when using the MakeForest interface
 #'
 #' @return Returns a list containing the function arguments
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
@@ -149,6 +150,54 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item beta: posterior samples of beta
 #'   \item gamma: posterior samples of gamma
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
+#' }
+#' 
+#' @examples \donttest{
+#' 
+#' ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
+#' 
+#' num_burn <- 10 ## Should be ~ 5000
+#' num_save <- 10 ## Should be ~ 5000
+#' 
+#' set.seed(1234)
+#' f_fried <- function(x) 10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 
+#'   10 * x[,4] + 5 * x[,5]
+#' 
+#' gen_data <- function(n_train, n_test, P, sigma) {
+#'   X <- matrix(runif(n_train * P), nrow = n_train)
+#'   mu <- f_fried(X)
+#'   X_test <- matrix(runif(n_test * P), nrow = n_test)
+#'   mu_test <- f_fried(X_test)
+#'   Y <- mu + sigma * rnorm(n_train)
+#'   Y_test <- mu_test + sigma * rnorm(n_test)
+#'   
+#'   return(list(X = X, Y = Y, mu = mu, X_test = X_test, Y_test = Y_test, mu_test = mu_test))
+#' }
+#' 
+#' ## Simiulate dataset
+#' sim_data <- gen_data(250, 100, 1000, 1)
+#' 
+#' ## Fit the model
+#' fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test, 
+#'                 hypers = Hypers(sim_data$X, sim_data$Y, num_tree = 50, temperature = 1),
+#'                 opts = Opts(num_burn = num_burn, num_save = num_save, update_tau = TRUE))
+#' 
+#' ## Plot the fit (note: interval estimates are not prediction intervals, 
+#' ## so they do not cover the predictions at the nominal rate)
+#' plot(fit)
+#' 
+#' ## Look at posterior model inclusion probabilities for each predictor. 
+#' 
+#' posterior_probs <- function(fit) colMeans(fit$var_counts > 0)
+#' plot(posterior_probs(fit), 
+#'      col = ifelse(posterior_probs(fit) > 0.5, scales::muted("blue"), 
+#'                   scales::muted("green")), 
+#'      pch = 20)
+#' 
+#' rmse <- function(x,y) sqrt(mean((x-y)^2))
+#' 
+#' rmse(fit$y_hat_test_mean, sim_data$mu_test)
+#' rmse(fit$y_hat_train_mean, sim_data$mu)
 #' }
 softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
@@ -271,7 +320,7 @@ GetSigma <- function(X,Y, weights = NULL) {
 
 
   fit <- cv.glmnet(x = X, y = Y, weights = weights)
-  fitted <- predict(fit, X)
+  fitted <- predict_glmnet(fit, X)
   sigma_hat <- sqrt(mean((fitted - Y)^2))
   # sigma_hat <- 0
   # if(nrow(X) > 2 * ncol(X)) {
@@ -283,9 +332,4 @@ GetSigma <- function(X,Y, weights = NULL) {
 
   return(sigma_hat)
 
-}
-
-MakeForest <- function(hypers, opts) {
-  mf <- Module(module = "mod_forest", PACKAGE = "SoftBart")
-  return(new(mf$Forest, hypers, opts))
 }

@@ -18,7 +18,7 @@
 #' \itemize{
 #'   \item fd: A matrix (i,j) whose value is the ith draw of f_s(x_s) for the 
 #'             jth value of x_s. 'fd' is for 'function draws'.
-#'             For pdfbart2, fd is a single matrix, where the columns correspond 
+#'             For pd2softbart, fd is a single matrix, where the columns correspond 
 #'             to all possible pairs of values for the pair of variables 
 #'             indicated by xind. That is, all possible (x_i, x_j) where x_i is
 #'             a value in the levs component corresponding to the first x and 
@@ -29,7 +29,7 @@
 #'  levels in levs are constructed using argument levquants.
 #' }
 #' 
-#' The remaining componets returned in the list are the same as in the value of bart. 
+#' The remaining components returned in the list are the same as in the value of bart. 
 pdsoftbart <- function(X, Y, xind = NULL, levs = NULL,
                        levquants = c(0.05, (1:9) / 10, 0.95),
                        pl=FALSE, plquants = c(0.05, 0.95), ...) {
@@ -194,7 +194,7 @@ plot.pd2bart = function(
     image(x=x$levs[[1]],y=x$levs[[2]],qq[[i]],zlim=zlim,
           xlab=x$xlbs[1],ylab=x$xlbs[2],...)
     contour(x=x$levs[[1]],y=x$levs[[2]],qq[[i]],zlim=zlim,
-            ,add=TRUE,method='edge',col=contour.color)
+            add=TRUE,method='edge',col=contour.color)
     title(main=c('Lower quantile','Median','Upper quantile')[i])
   }
 }

@@ -38,7 +38,7 @@ Plot methods do not return anything. pdbart and pd2bart return lists with compon
 \itemize{
   \item fd: A matrix (i,j) whose value is the ith draw of f_s(x_s) for the 
             jth value of x_s. 'fd' is for 'function draws'.
-            For pdfbart2, fd is a single matrix, where the columns correspond 
+            For pd2softbart, fd is a single matrix, where the columns correspond 
             to all possible pairs of values for the pair of variables 
             indicated by xind. That is, all possible (x_i, x_j) where x_i is
             a value in the levs component corresponding to the first x and 
@@ -49,7 +49,7 @@ Plot methods do not return anything. pdbart and pd2bart return lists with compon
  levels in levs are constructed using argument levquants.
 }
 
-The remaining componets returned in the list are the same as in the value of bart.
+The remaining components returned in the list are the same as in the value of bart.
 }
 \description{
 Modified version of the pdbart function from the BayesTree package. 

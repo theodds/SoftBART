@@ -276,7 +276,7 @@ double LogLT(Node* n, const arma::vec& Y, const arma::vec& weights,
   arma::mat Omega_inv = zeros<mat>(num_leaves, num_leaves);
   GetSuffStats(n, Y, weights, X, hypers, mu_hat, Omega_inv);
 
-  int N = Y.size();
+  // int N = Y.size();
 
   // Rcout << "Compute ";
   // double out = -0.5 * N * log(M_2PI * pow(hypers.sigma,2)) * hypers.temperature;

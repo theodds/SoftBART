@@ -34,49 +34,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rcpparma_hello_world
-arma::mat rcpparma_hello_world();
-RcppExport SEXP _SoftBart_rcpparma_hello_world() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpparma_hello_world());
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_outerproduct
-arma::mat rcpparma_outerproduct(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_outerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_outerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_innerproduct
-double rcpparma_innerproduct(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_innerproduct(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_innerproduct(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// rcpparma_bothproducts
-Rcpp::List rcpparma_bothproducts(const arma::colvec& x);
-RcppExport SEXP _SoftBart_rcpparma_bothproducts(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::colvec& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(rcpparma_bothproducts(x));
-    return rcpp_result_gen;
-END_RCPP
-}
 // update_sigma
 double update_sigma(const arma::vec& r, double sigma_hat, double sigma_old, double temperature);
 RcppExport SEXP _SoftBart_update_sigma(SEXP rSEXP, SEXP sigma_hatSEXP, SEXP sigma_oldSEXP, SEXP temperatureSEXP) {
@@ -165,10 +122,6 @@ RcppExport SEXP _rcpp_module_boot_mod_forest();
 static const R_CallMethodDef CallEntries[] = {
     {"_SoftBart_rmvnorm", (DL_FUNC) &_SoftBart_rmvnorm, 2},
     {"_SoftBart_choll", (DL_FUNC) &_SoftBart_choll, 1},
-    {"_SoftBart_rcpparma_hello_world", (DL_FUNC) &_SoftBart_rcpparma_hello_world, 0},
-    {"_SoftBart_rcpparma_outerproduct", (DL_FUNC) &_SoftBart_rcpparma_outerproduct, 1},
-    {"_SoftBart_rcpparma_innerproduct", (DL_FUNC) &_SoftBart_rcpparma_innerproduct, 1},
-    {"_SoftBart_rcpparma_bothproducts", (DL_FUNC) &_SoftBart_rcpparma_bothproducts, 1},
     {"_SoftBart_update_sigma", (DL_FUNC) &_SoftBart_update_sigma, 4},
     {"_SoftBart_rlgam", (DL_FUNC) &_SoftBart_rlgam, 1},
     {"_SoftBart_SoftBart", (DL_FUNC) &_SoftBart_SoftBart, 33},

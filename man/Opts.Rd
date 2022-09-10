@@ -45,7 +45,7 @@ Opts(
 
 \item{update_sigma}{If true, sigma is updated, with a half-Cauchy prior on sigma centered at the initial guess}
 
-\item{cache_trees}{If true, we save the trees for each MCMC iteration when using the MakeForest interace}
+\item{cache_trees}{If true, we save the trees for each MCMC iteration when using the MakeForest interface}
 }
 \value{
 Returns a list containing the function arguments

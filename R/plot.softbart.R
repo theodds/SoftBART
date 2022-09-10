@@ -1,6 +1,6 @@
-plot.softbart <- function(fit, plquants = c(0.05, 0.95), ...) {
+plot.softbart <- function(x, plquants = c(0.05, 0.95), ...) {
 
-  library(scales)
+  fit  <- x
   cols <- c(muted("blue", 60, 80), muted("green"))
 
 

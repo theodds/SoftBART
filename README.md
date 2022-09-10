@@ -22,7 +22,7 @@ include:
     (suspected) better performance in theory and practice, the MCMC for
     the Gibbs prior should (hopefully) mix better.
 
-  - New Markov transistions are used, including sampling a tree from the
+  - New Markov transitions are used, including sampling a tree from the
     prior and using a type of “Perturb” move due to Pratola (2016,
     Bayesian Analysis). This has substantial benefits for the mixing of
     the chain.

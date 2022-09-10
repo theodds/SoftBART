@@ -9,22 +9,6 @@ choll <- function(Sigma) {
     .Call('_SoftBart_choll', PACKAGE = 'SoftBart', Sigma)
 }
 
-rcpparma_hello_world <- function() {
-    .Call('_SoftBart_rcpparma_hello_world', PACKAGE = 'SoftBart')
-}
-
-rcpparma_outerproduct <- function(x) {
-    .Call('_SoftBart_rcpparma_outerproduct', PACKAGE = 'SoftBart', x)
-}
-
-rcpparma_innerproduct <- function(x) {
-    .Call('_SoftBart_rcpparma_innerproduct', PACKAGE = 'SoftBart', x)
-}
-
-rcpparma_bothproducts <- function(x) {
-    .Call('_SoftBart_rcpparma_bothproducts', PACKAGE = 'SoftBart', x)
-}
-
 update_sigma <- function(r, sigma_hat, sigma_old, temperature) {
     .Call('_SoftBart_update_sigma', PACKAGE = 'SoftBart', r, sigma_hat, sigma_old, temperature)
 }

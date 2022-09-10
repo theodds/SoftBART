@@ -19,7 +19,7 @@ Some new experimental features have been pushed to the MFM branch. These include
 
 - The Dirichlet prior for variable selection (i.e., DART) has been replaced with a Gibbs prior on the partition of the branches, or (equivalently), a "Mixture of Finite Mixtures" prior. See Miller and Harrison (2018, JASA) for a description of these priors in the context of Bayesian nonparametric mixture models. In addition to (suspected) better performance in theory and practice, the MCMC for the Gibbs prior should (hopefully) mix better.
 
-- New Markov transistions are used, including sampling a tree from the prior and using a type of "Perturb" move due to Pratola (2016, Bayesian Analysis). This has substantial benefits for the mixing of the chain.
+- New Markov transitions are used, including sampling a tree from the prior and using a type of "Perturb" move due to Pratola (2016, Bayesian Analysis). This has substantial benefits for the mixing of the chain.
 
 I plan to merge these changes into master once they are thoroughly tested.
 
@@ -74,21 +74,22 @@ fit <- softbart(X = sim_data$X, Y = sim_data$Y, X_test = sim_data$X_test,
     
 ## Plot the fit (note: interval estimates are not prediction intervals, 
 ## so they do not cover the predictions at the nominal rate)
-plot.softbart(fit)
+plot(fit)
 
 ## Look at posterior model inclusion probabilities for each predictor. 
 
 posterior_probs <- function(fit) colMeans(fit$var_counts > 0)
 plot(posterior_probs(fit), 
-     col = ifelse(posterior_probs(fit) > 0.5, muted("blue"), muted("green")), 
+     col = ifelse(posterior_probs(fit) > 0.5, scales::muted("blue"), 
+                  scales::muted("green")), 
      pch = 20)
 
 rmse <- function(x,y) sqrt(mean((x-y)^2))
 
 rmse(fit$y_hat_test_mean, sim_data$mu_test)
 rmse(fit$y_hat_train_mean, sim_data$mu)
-
 ```
+
 ### Accessing the model from R
 
 In more complex settings, one may wish to incorporate the SoftBART model as a component within a larger model. In this case, it is possible to construct a SoftBART object within `R` and do a single Gibbs sampling update.
