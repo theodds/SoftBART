@@ -17,7 +17,4 @@ plot.softbart <- function(x, plquants = c(0.05, 0.95), ...) {
     lines(x = c(fit$y[i], fit$y[i]), y = c(ql[i], qu[i]), col = alpha(cols[1], .7))
     abline(0,1, lty = 2, col = cols[2])
   }
-
-  print(mean(ql < fit$y & qu > fit$y))
-
 }
