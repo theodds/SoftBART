@@ -13,6 +13,7 @@ Imports:
     glmnet (>= 4.0.0),
     scales (>= 1.1.1),
     methods,
-    caret
+    caret,
+    truncnorm
 LinkingTo: Rcpp, RcppArmadillo
 RoxygenNote: 7.2.1
