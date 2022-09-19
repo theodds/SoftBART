@@ -4,7 +4,7 @@ dummy_assign <- function(dummy) {
   j     <- 0
   for(k in terms) {
     if(k %in% dummy) {
-      group[[k]] <- rep(j, length(dv$lvls[[k]]))
+      group[[k]] <- rep(j, length(dummy$lvls[[k]]))
     } else {
       group[[k]] <- j
     }
@@ -13,8 +13,71 @@ dummy_assign <- function(dummy) {
   return(do.call(c, group))
 }
 
+#' SoftBart Probit Regression
+#' 
+#' Fits a nonparametric probit regression model with the nonparametric function
+#' modeled using a SoftBart model.
+#'
+#' @param formula A model formula with a binary factor on the left-hand-side and predictors on the right-hand-side
+#' @param data A data.frame consisting of the training data
+#' @param test_data A data.frame consisting of the testing data
+#' @param num_tree The number of trees in the ensemble to use
+#' @param k Determines the standard deviation of the leaf node parameters, which is given by 3 / k / sqrt(num_tree)
+#' @param hypers A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)
+#' @param opts A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)
+#'
+#' @return Returns a list with the following components
+#' \itemize{
+#'   \item sigma_mu: samples of the standard deviation of the leaf node parameters
+#'   \item varcounts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
+#'   \item mu_train: samples of the nonparametric function evaluated on the training set; pnorm(mu_train) gives the success probabilities
+#'   \item mu_test: samples of the nonparametric function evaluated on the test set; pnorm(mu_train) gives the success probabilities 
+#'   \item forest: a forest obejct; see the MakeForest documentation for more details.
+#' }
+#' @export
+#'
+#' @examples \donttest{
+#' 
+#' ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
+#' 
+#' num_burn <- 10 ## Should be ~ 5000
+#' num_save <- 10 ## Should be ~ 5000
+#' 
+#' set.seed(1234)
+#' f_fried <- function(x) 10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 
+#'   10 * x[,4] + 5 * x[,5]
+#' 
+#' gen_data <- function(n_train, n_test, P, sigma) {
+#'   X <- matrix(runif(n_train * P), nrow = n_train)
+#'   mu <- (f_fried(X) - 14) / 5
+#'   X_test <- matrix(runif(n_test * P), nrow = n_test)
+#'   mu_test <- (f_fried(X_test) - 14) / 5
+#'   Y <- factor(rbinom(n_train, 1, pnorm(mu)), levels = c(0,1))
+#'   Y_test <- factor(rbinom(n_test, 1, pnorm(mu_test)), levels = c(0,1))
+#'   
+#'   return(list(X = X, Y = Y, mu = mu, X_test = X_test, Y_test = Y_test, 
+#'               mu_test = mu_test))
+#' }
+#' 
+#' ## Simiulate dataset
+#' sim_data <- gen_data(250, 250, 100, 1)
+#' 
+#' df <- data.frame(X = sim_data$X, Y = sim_data$Y)
+#' df_test <- data.frame(X = sim_data$X_test, Y = sim_data$Y_test)
+#' 
+#' ## Fit the model
+#' 
+#' opts <- Opts(num_burn = num_burn, num_save = num_save)
+#' fitted_probit <- softbart_probit(Y ~ ., df, df_test, opts = opts)
+#' 
+#' ## Plot results
+#' 
+#' plot(colMeans(fitted_probit$mu_test), sim_data$mu_test)
+#' abline(a = 0, b = 1)
+#' 
+#' }
 softbart_probit <- function(formula, data, test_data, num_tree = 20,
-                            k = 2, hypers = NULL, opts = NULL) {
+                            k = 1, hypers = NULL, opts = NULL) {
   
   ## Get design matricies and groups for categorical
   
@@ -50,7 +113,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
     opts <- Opts()
   }
   opts$update_sigma <- FALSE
-  opts$num_print = Inf
+  opts$num_print <- 2147483647
   
   ## Normalize!
   
@@ -77,7 +140,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   
   ## Initialize Z
   
-  mu <- probit_forest$do_predict(X_train) %>% as.numeric()
+  mu <- as.numeric(probit_forest$do_predict(X_train))
   lower <- ifelse(Y_train == 0, -Inf, 0)
   upper <- ifelse(Y_train == 0, 0, Inf)
   
