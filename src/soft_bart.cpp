@@ -513,7 +513,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
       // Rcout << "Finishing warmup " << i + 1 << ": tau = " << hypers.width << "\n";
       Rcout << "Finishing warmup " << i + 1
             // << " tau_rate = " << hypers.tau_rate
-            << " Number of trees = " << hypers.num_tree
+            // << " Number of trees = " << hypers.num_tree
             << "\n"
         ;
     }
@@ -1763,8 +1763,9 @@ arma::mat Forest::do_gibbs(const arma::mat& X, const arma::vec& Y,
     Y_out.row(i) = tmp.t();
     num_gibbs++;
     if(num_gibbs % opts.num_print == 0) {
-      Rcout << "Finishing iteration " << num_gibbs << ": num_trees = " <<
-        hypers.num_tree << std::endl;
+      Rcout << "Finishing iteration " << num_gibbs 
+            // << ": num_trees = " << hypers.num_tree 
+            << std::endl;
     }
     if(opts.cache_trees) {
       saved_forests.push_back(copy_forest(trees, hypers));
