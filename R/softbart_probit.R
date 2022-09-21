@@ -1,7 +1,9 @@
 #' SoftBart Probit Regression
 #' 
 #' Fits a nonparametric probit regression model with the nonparametric function
-#' modeled using a SoftBart model.
+#' modeled using a SoftBart model. Specifically, the model takes \eqn{\Pr(Y = 1
+#' \mid X = x) = \Phi\{a + r(x)\}}{P(Y = 1 | X = x) = pnorm(a + r(x))} where
+#' \eqn{a}{a} is an offset and \eqn{r(x)}{r(x)} is a Soft BART ensemble.
 #'
 #' @param formula A model formula with a binary factor on the left-hand-side and predictors on the right-hand-side
 #' @param data A data.frame consisting of the training data
@@ -24,6 +26,11 @@
 #'   \item mu_test_mean: posterior mean of mu_test
 #'   \item p_train_mean: posterior mean of p_train
 #'   \item p_test_mean: posterior mean of p_test
+#'   \item offset: we fit model of the form (offset + BART), with the offset estimated empirically prior to running the chain
+#'   \item pnorm_offset: the pnorm of the offset, which is chosen to match the probability of the second factor level
+#'   \item formula: the formula specified by the user
+#'   \item ecdfs: empirical distribution functions, used by the predict function
+#'   \item opts: the options used when running the chain
 #'   \item forest: a forest object; see the MakeForest documentation for more details.
 #' }
 #' @export
@@ -87,6 +94,9 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   stopifnot(length(levels(Y_train)) == 2)
   Y_train <- as.numeric(Y_train) - 1
   Y_test  <- as.numeric(Y_test) - 1
+  
+  pnorm_offset <- mean(Y_train)
+  offset <- qnorm(pnorm_offset)
   
   ## Set up hypers
   
@@ -154,9 +164,9 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
     if(verbose) pb$tick()
     ## Sample Z
     Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
-                    mean = mu, sd = 1)
+                    mean = mu + offset, sd = 1)
     ## Update R
-    mu <- probit_forest$do_gibbs(X_train, Z, X_train, 1)
+    mu <- probit_forest$do_gibbs(X_train, Z - offset, X_train, 1)
   }
   
   ## Save
@@ -170,28 +180,36 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
     for(j in 1:opts$num_thin) {
       ## Sample Z
       Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
-                      mean = mu, sd = 1)
+                      mean = offset + mu, sd = 1)
       ## Update R
-      mu <- probit_forest$do_gibbs(X_train, Z, X_train, 1)
+      mu <- probit_forest$do_gibbs(X_train, Z - offset, X_train, 1)
     }
     
     sigma_mu[i]   <- probit_forest$get_sigma_mu()
     varcounts[i,] <- probit_forest$get_counts()
-    mu_train[i,]  <- mu
-    mu_test[i,]   <- probit_forest$do_predict(X_test)
+    mu_train[i,]  <- mu + offset
+    mu_test[i,]   <- probit_forest$do_predict(X_test) + offset
     
   }
   
   p_train <- pnorm(mu_train)
   p_test  <- pnorm(mu_test)
   
-  return(list(sigma_mu = sigma_mu, varcounts = varcounts, mu_train = mu_train,
+  out <- list(sigma_mu = sigma_mu, varcounts = varcounts, mu_train = mu_train,
               p_train = p_train, p_test = p_test,
               mu_test = mu_test,
               mu_train_mean = colMeans(mu_train),
               mu_test_mean = colMeans(mu_test),
               p_train_mean = colMeans(p_train),
               p_test_mean = colMeans(p_test),
-              forest = probit_forest))
+              offset = offset,
+              pnorm_offset = pnorm(offset),
+              formula = formula,
+              ecdfs = ecdfs,
+              opts = opts,
+              forest = probit_forest)
+  
+  class(out) <- "softbart_probit"
+  return(out)
   
 }
