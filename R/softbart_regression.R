@@ -1,9 +1,9 @@
-#' SoftBart Probit Regression
+#' SoftBart Regression
 #' 
-#' Fits a nonparametric probit regression model with the nonparametric function
+#' Fits a semiparametric regression model with the nonparametric function
 #' modeled using a SoftBart model.
 #'
-#' @param formula A model formula with a binary factor on the left-hand-side and predictors on the right-hand-side
+#' @param formula A model formula with a numeric variable on the left-hand-side and predictors on the right-hand-side
 #' @param data A data.frame consisting of the training data
 #' @param test_data A data.frame consisting of the testing data
 #' @param num_tree The number of trees in the ensemble to use
@@ -14,15 +14,12 @@
 #' @return Returns a list with the following components
 #' \itemize{
 #'   \item sigma_mu: samples of the standard deviation of the leaf node parameters
+#'   \item sigma: samples of the error standard deviation
 #'   \item varcounts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
-#'   \item mu_train: samples of the nonparametric function evaluated on the training set; pnorm(mu_train) gives the success probabilities
-#'   \item mu_test: samples of the nonparametric function evaluated on the test set; pnorm(mu_train) gives the success probabilities 
-#'   \item p_train: samples of probabilities on training set
-#'   \item p_test: samples of probabilities on test set
+#'   \item mu_train: samples of the nonparametric function evaluated on the training set
+#'   \item mu_test: samples of the nonparametric function evaluated on the test set
 #'   \item mu_train_mean: posterior mean of mu_train
 #'   \item mu_test_mean: posterior mean of mu_test
-#'   \item p_train_mean: posterior mean of p_train
-#'   \item p_test_mean: posterior mean of p_test
 #'   \item forest: a forest object; see the MakeForest documentation for more details.
 #' }
 #' @export
@@ -40,11 +37,11 @@
 #' 
 #' gen_data <- function(n_train, n_test, P, sigma) {
 #'   X <- matrix(runif(n_train * P), nrow = n_train)
-#'   mu <- (f_fried(X) - 14) / 5
+#'   mu <- f_fried(X)
 #'   X_test <- matrix(runif(n_test * P), nrow = n_test)
-#'   mu_test <- (f_fried(X_test) - 14) / 5
-#'   Y <- factor(rbinom(n_train, 1, pnorm(mu)), levels = c(0,1))
-#'   Y_test <- factor(rbinom(n_test, 1, pnorm(mu_test)), levels = c(0,1))
+#'   mu_test <- f_fried(X_test)
+#'   Y <- mu + sigma * rnorm(n_train)
+#'   Y_test <- mu + sigma * rnorm(n_test)
 #'   
 #'   return(list(X = X, Y = Y, mu = mu, X_test = X_test, Y_test = Y_test, 
 #'               mu_test = mu_test))
@@ -59,19 +56,17 @@
 #' ## Fit the model
 #' 
 #' opts <- Opts(num_burn = num_burn, num_save = num_save)
-#' fitted_probit <- softbart_probit(Y ~ ., df, df_test, opts = opts)
+#' fitted_reg <- softbart_regression(Y ~ ., df, df_test, opts = opts)
 #' 
 #' ## Plot results
 #' 
-#' plot(fitted_probit$mu_test_mean, sim_data$mu_test)
+#' plot(colMeans(fitted_reg$mu_test), sim_data$mu_test)
 #' abline(a = 0, b = 1)
-#' 
-#' 
-softbart_probit <- function(formula, data, test_data, num_tree = 20,
-                            k = 1, hypers = NULL, opts = NULL) {
+softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2, 
+                                hypers = NULL, opts = NULL) {
   
   ## Get design matricies and groups for categorical
-  
+
   dv <- dummyVars(formula, data)
   terms <- attr(dv$terms, "term.labels")
   group <- dummy_assign(dv)
@@ -82,30 +77,28 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   Y_train <- model.response(model.frame(formula, data))
   Y_test  <- model.response(model.frame(formula, test_data))
   
-  stopifnot(is.factor(Y_train))
-  stopifnot(length(levels(Y_train)) == 2)
-  Y_train <- as.numeric(Y_train) - 1
-  Y_test  <- as.numeric(Y_test) - 1
+  stopifnot(is.numeric(Y_train))
+  mu_Y <- mean(Y_train)
+  sd_Y <- sd(Y_train)
+  Y_train <- (Y_train - mu_Y) / sd_Y
+  Y_test  <- (Y_test - mu_Y) / sd_Y
   
   ## Set up hypers
-  
   if(is.null(hypers)) {
-    hypers <- Hypers(X = X_train, Y = Y_train)
+    hypers <- Hypers(X = X_train, Y = Y_train, normalize_Y = FALSE)
   }
+  
   hypers$sigma_mu = 3 / k / sqrt(num_tree)
-  hypers$sigma <- 1
-  hypers$sigma_hat <- 1
   hypers$num_tree <- num_tree
   hypers$group <- group
   
   ## Set up opts
-  
+
   if(is.null(opts)) {
     opts <- Opts()
   }
-  opts$update_sigma <- FALSE
   opts$num_print <- 2147483647
-  
+
   ## Normalize!
   
   make_01_norm <- function(x) {
@@ -126,36 +119,26 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   }
   
   ## Make forest ----
-  
-  probit_forest <- MakeForest(hypers, opts)
-  
-  ## Initialize Z
-  
-  mu <- as.numeric(probit_forest$do_predict(X_train))
-  lower <- ifelse(Y_train == 0, -Inf, 0)
-  upper <- ifelse(Y_train == 0, 0, Inf)
+  reg_forest <- MakeForest(hypers, opts)
   
   ## Initialize output
   
   mu_train  <- matrix(NA, nrow = opts$num_save, ncol = length(Y_train))
   mu_test   <- matrix(NA, nrow = opts$num_save, ncol = length(Y_test))
   sigma_mu  <- numeric(opts$num_save)
-  varcounts <- matrix(NA, nrow = opts$num_save, ncol = length(terms))
-  
+  sigma     <- numeric(opts$num_save)
+  varcounts <- matrix(NA, nrow = opts$num_save, ncol = length(terms))  
   
   ## Warmup
   
   pb <- progress_bar$new(
     format = "  warming up [:bar] :percent eta: :eta",
-    total = opts$num_burn, clear = FALSE, width= 60)
+    total = opts$num_burn, clear = FALSE, width= 60)  
   
   for(i in 1:opts$num_burn) {
     pb$tick()
-    ## Sample Z
-    Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
-                    mean = mu, sd = 1)
     ## Update R
-    mu <- probit_forest$do_gibbs(X_train, Z, X_train, 1)
+    mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
   }
   
   ## Save
@@ -167,30 +150,21 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   for(i in 1:opts$num_save) {
     pb$tick()
     for(j in 1:opts$num_thin) {
-      ## Sample Z
-      Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
-                      mean = mu, sd = 1)
-      ## Update R
-      mu <- probit_forest$do_gibbs(X_train, Z, X_train, 1)
+      mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
     }
     
-    sigma_mu[i]   <- probit_forest$get_sigma_mu()
-    varcounts[i,] <- probit_forest$get_counts()
-    mu_train[i,]  <- mu
-    mu_test[i,]   <- probit_forest$do_predict(X_test)
+    sigma_mu[i]   <- reg_forest$get_sigma_mu() * sd_Y
+    sigma[i]      <- reg_forest$get_sigma() * sd_Y
+    varcounts[i,] <- reg_forest$get_counts()
+    mu_train[i,]  <- mu * sd_Y + mu_Y
+    mu_test[i,]   <- reg_forest$do_predict(X_test) * sd_Y + mu_Y
     
   }
   
-  p_train <- pnorm(mu_train)
-  p_test  <- pnorm(mu_test)
-  
-  return(list(sigma_mu = sigma_mu, varcounts = varcounts, mu_train = mu_train,
-              p_train = p_train, p_test = p_test,
-              mu_test = mu_test,
-              mu_train_mean = colMeans(mu_train),
+  return(list(sigma_mu = sigma_mu, varcounts = varcounts, sigma = sigma, 
+              mu_train = mu_train, mu_test = mu_test, 
+              mu_train_mean = colMeans(mu_train), 
               mu_test_mean = colMeans(mu_test),
-              p_train_mean = colMeans(p_train),
-              p_test_mean = colMeans(p_test),
-              forest = probit_forest))
+              forest = reg_forest))
   
 }

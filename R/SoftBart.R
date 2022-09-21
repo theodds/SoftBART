@@ -152,7 +152,7 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
 #' }
 #' 
-#' @examples \donttest{
+#' @examples
 #' 
 #' ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
 #' 
@@ -198,7 +198,7 @@ unnormalize_bart <- function(z, a, b) {
 #' 
 #' rmse(fit$y_hat_test_mean, sim_data$mu_test)
 #' rmse(fit$y_hat_train_mean, sim_data$mu)
-#' }
+#' 
 softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
 
   if(is.null(hypers)){

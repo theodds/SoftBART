@@ -178,6 +178,8 @@ plot.pd2bart = function(
   ...
 )
 {
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
   pdquants = apply(x$fd,2,quantile,probs=c(plquants[1],.5,plquants[2]))
   qq <- vector('list',3)
   for (i in 1:3) 

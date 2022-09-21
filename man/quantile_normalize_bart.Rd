@@ -16,9 +16,8 @@ A matrix X_norm such that each column gives the associated empirical quantile of
 Performs a quantile normalization to each column of the matrix X
 }
 \examples{
-\donttest{
 X <- matrix(rgamma(100 * 10, shape = 2), nrow = 100)
 X <- quantile_normalize_bart(X)
 summary(X)
-}
+
 }

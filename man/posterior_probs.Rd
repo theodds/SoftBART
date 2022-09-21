@@ -25,7 +25,6 @@ SoftBART model, as well as variable importances and the median probability
 model (MPM).
 }
 \examples{
-\donttest{
 ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
 
 num_burn <- 10 ## Should be ~ 5000
@@ -60,5 +59,5 @@ post_probs <- posterior_probs(fit)
 plot(post_probs$post_probs)
 print(post_probs$median_probability_model)
 
-}
+
 }

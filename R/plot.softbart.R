@@ -3,7 +3,8 @@ plot.softbart <- function(x, plquants = c(0.05, 0.95), ...) {
   fit  <- x
   cols <- c(muted("blue", 60, 80), muted("green"))
 
-
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))
   par(mfrow = c(1,2))
 
   plot(fit$sigma, type = 'l', ylab = 'sigma', ..., col = muted("green", l = 80, c= 60))

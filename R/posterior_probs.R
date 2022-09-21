@@ -16,7 +16,7 @@
 #' }
 #' @export
 #'
-#' @examples \donttest{
+#' @examples
 #' ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
 #' 
 #' num_burn <- 10 ## Should be ~ 5000
@@ -51,7 +51,7 @@
 #' plot(post_probs$post_probs)
 #' print(post_probs$median_probability_model)
 #' 
-#' }
+#'
 posterior_probs <- function(fit) {
   varimp                   <- colMeans(fit$var_counts)
   post_probs               <- colMeans(fit$var_counts > 0)

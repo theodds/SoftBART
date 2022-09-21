@@ -28,11 +28,11 @@ trank <- function(x) {
 #'
 #' @return A matrix X_norm such that each column gives the associated empirical quantile of each observation for each predictor.
 #'
-#' @examples \donttest{
+#' @examples
 #' X <- matrix(rgamma(100 * 10, shape = 2), nrow = 100)
 #' X <- quantile_normalize_bart(X)
 #' summary(X)
-#' }
+#' 
 quantile_normalize_bart <- function(X) {
   apply(X = X, MARGIN = 2, trank)
 }
@@ -53,10 +53,10 @@ quantile_normalize_bart <- function(X) {
 #'   \item group: a vector of group memberships of the columns of X.
 #' }
 #'
-#' @examples \donttest{
+#' @examples
 #' data(iris)
 #' preprocess_df(iris)
-#' }
+#' 
 preprocess_df <- function(X) {
   stopifnot(is.data.frame(X))
 

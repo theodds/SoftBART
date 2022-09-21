@@ -24,8 +24,7 @@ is required to get sensible variable selection for categorical variables, and
 should be passed in as the group argument to Hypers.
 }
 \examples{
-\donttest{
 data(iris)
 preprocess_df(iris)
-}
+
 }

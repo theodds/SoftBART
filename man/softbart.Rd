@@ -37,7 +37,6 @@ Returns a list with the following components:
 Runs the Markov chain for the softbart model and collects the output
 }
 \examples{
-\donttest{
 
 ## NOTE: SET NUMBER OF BURN IN AND SAMPLE ITERATIONS HIGHER IN PRACTICE
 
@@ -83,5 +82,5 @@ rmse <- function(x,y) sqrt(mean((x-y)^2))
 
 rmse(fit$y_hat_test_mean, sim_data$mu_test)
 rmse(fit$y_hat_train_mean, sim_data$mu)
-}
+
 }

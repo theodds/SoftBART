@@ -107,9 +107,8 @@ safe_bart <- function(formula, data, test_data = NULL, num_burn, num_thin,
 
 my_safebart <- safe_bart(Y ~ ., my_data, 10000, 1, 10000)
 
-par(mfrow = c(1,2))
+# par(mfrow = c(1,2))
 plot(my_safebart$sigma, type = 'l')
 plot(my_safebart$sigma_mu, type = 'l')
 
-rmse <- function(x, y) sqrt(mean((x - y)^2))
 rmse(colMeans(my_safebart$mu), mu)
