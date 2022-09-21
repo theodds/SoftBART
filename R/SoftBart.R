@@ -136,6 +136,7 @@ unnormalize_bart <- function(z, a, b) {
 #' @param X_test NxP matrix of test data covariates
 #' @param hypers List of hyperparameter values obtained from Hypers function
 #' @param opts List of MCMC chain settings obtained from Opts function
+#' @param verbose If TRUE, progress of the chain will be printed to the console.
 #'
 #' @return Returns a list with the following components:
 #' \itemize{
@@ -150,6 +151,7 @@ unnormalize_bart <- function(z, a, b) {
 #'   \item beta: posterior samples of beta
 #'   \item gamma: posterior samples of gamma
 #'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
+#'   \item num_leaves_final: the number of leaves for each tree at the final iteration
 #' }
 #' 
 #' @examples
@@ -188,18 +190,16 @@ unnormalize_bart <- function(z, a, b) {
 #' 
 #' ## Look at posterior model inclusion probabilities for each predictor. 
 #' 
-#' posterior_probs <- function(fit) colMeans(fit$var_counts > 0)
 #' plot(posterior_probs(fit), 
 #'      col = ifelse(posterior_probs(fit) > 0.5, scales::muted("blue"), 
 #'                   scales::muted("green")), 
 #'      pch = 20)
 #' 
-#' rmse <- function(x,y) sqrt(mean((x-y)^2))
 #' 
 #' rmse(fit$y_hat_test_mean, sim_data$mu_test)
 #' rmse(fit$y_hat_train_mean, sim_data$mu)
 #' 
-softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
+softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts(), verbose = TRUE) {
 
   if(is.null(hypers)){
     hypers <- Hypers(X,Y)
@@ -220,6 +220,10 @@ softbart <- function(X, Y, X_test, hypers = NULL, opts = Opts()) {
     print("Using default grouping; if this is not desired, preprocess data frame manually using preprocess_df before calling.")
     hypers$group
     hypers$group <- preproc_df$group
+  }
+  
+  if(!verbose) {
+    opts$num_print <- .Machine$integer.max
   }
 
   X_trans <- quantile_normalize_bart(X_trans)

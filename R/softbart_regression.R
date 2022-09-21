@@ -10,6 +10,7 @@
 #' @param k Determines the standard deviation of the leaf node parameters, which is given by 3 / k / sqrt(num_tree)
 #' @param hypers A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)
 #' @param opts A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)
+#' @param verbose If TRUE, progress of the chain will be printed to the console.
 #'
 #' @return Returns a list with the following components
 #' \itemize{
@@ -63,7 +64,7 @@
 #' plot(colMeans(fitted_reg$mu_test), sim_data$mu_test)
 #' abline(a = 0, b = 1)
 softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2, 
-                                hypers = NULL, opts = NULL) {
+                                hypers = NULL, opts = NULL, verbose = TRUE) {
   
   ## Get design matricies and groups for categorical
 
@@ -97,7 +98,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
   if(is.null(opts)) {
     opts <- Opts()
   }
-  opts$num_print <- 2147483647
+  opts$num_print <- .Machine$integer.max
 
   ## Normalize!
   
@@ -136,7 +137,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     total = opts$num_burn, clear = FALSE, width= 60)  
   
   for(i in 1:opts$num_burn) {
-    pb$tick()
+    if(verbose) pb$tick()
     ## Update R
     mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
   }
@@ -148,7 +149,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     total = opts$num_save, clear = FALSE, width= 60)
   
   for(i in 1:opts$num_save) {
-    pb$tick()
+    if(verbose) pb$tick()
     for(j in 1:opts$num_thin) {
       mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
     }

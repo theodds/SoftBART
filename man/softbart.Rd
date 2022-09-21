@@ -4,7 +4,7 @@
 \alias{softbart}
 \title{Fits the SoftBart model}
 \usage{
-softbart(X, Y, X_test, hypers = NULL, opts = Opts())
+softbart(X, Y, X_test, hypers = NULL, opts = Opts(), verbose = TRUE)
 }
 \arguments{
 \item{X}{NxP matrix of training data covariates}
@@ -16,6 +16,8 @@ softbart(X, Y, X_test, hypers = NULL, opts = Opts())
 \item{hypers}{List of hyperparameter values obtained from Hypers function}
 
 \item{opts}{List of MCMC chain settings obtained from Opts function}
+
+\item{verbose}{If TRUE, progress of the chain will be printed to the console.}
 }
 \value{
 Returns a list with the following components:
@@ -31,6 +33,7 @@ Returns a list with the following components:
   \item beta: posterior samples of beta
   \item gamma: posterior samples of gamma
   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
+  \item num_leaves_final: the number of leaves for each tree at the final iteration
 }
 }
 \description{
@@ -72,13 +75,11 @@ plot(fit)
 
 ## Look at posterior model inclusion probabilities for each predictor. 
 
-posterior_probs <- function(fit) colMeans(fit$var_counts > 0)
 plot(posterior_probs(fit), 
      col = ifelse(posterior_probs(fit) > 0.5, scales::muted("blue"), 
                   scales::muted("green")), 
      pch = 20)
 
-rmse <- function(x,y) sqrt(mean((x-y)^2))
 
 rmse(fit$y_hat_test_mean, sim_data$mu_test)
 rmse(fit$y_hat_train_mean, sim_data$mu)

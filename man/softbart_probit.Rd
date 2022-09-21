@@ -11,7 +11,8 @@ softbart_probit(
   num_tree = 20,
   k = 1,
   hypers = NULL,
-  opts = NULL
+  opts = NULL,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ softbart_probit(
 \item{hypers}{A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)}
 
 \item{opts}{A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)}
+
+\item{verbose}{If TRUE, progress of the chain will be printed to the console.}
 }
 \value{
 Returns a list with the following components

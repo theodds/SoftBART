@@ -534,6 +534,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   uvec num_tree = zeros<uvec>(opts.num_save);
   vec loglik = zeros<vec>(opts.num_save);
   mat loglik_train = zeros<mat>(opts.num_save, Y_hat.size());
+  uvec num_leaves_final = zeros<uvec>(hypers.num_tree);
 
   // Do save iterations
   for(int i = 0; i < opts.num_save; i++) {
@@ -563,10 +564,10 @@ Rcpp::List do_soft_bart(const arma::mat& X,
 
   }
 
-  Rcout << "Number of leaves at final iterations:\n";
   for(int t = 0; t < hypers.num_tree; t++) {
-    Rcout << leaves(forest[t]).size() << " ";
-    if((t + 1) % 10 == 0) Rcout << "\n";
+    num_leaves_final(t) = leaves(forest[t]).size();
+    // Rcout << leaves(forest[t]).size() << " ";
+    // if((t + 1) % 10 == 0) Rcout << "\n";
   }
 
   List out;
@@ -583,6 +584,7 @@ Rcpp::List do_soft_bart(const arma::mat& X,
   out["num_tree"] = num_tree;
   out["loglik"] = loglik;
   out["loglik_train"] = loglik_train;
+  out["num_leaves_final"] = num_leaves_final;
 
 
   return out;

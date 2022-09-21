@@ -10,6 +10,7 @@
 #' @param k Determines the standard deviation of the leaf node parameters, which is given by 3 / k / sqrt(num_tree)
 #' @param hypers A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)
 #' @param opts A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)
+#' @param verbose If TRUE, progress of the chain will be printed to the console.
 #'
 #' @return Returns a list with the following components
 #' \itemize{
@@ -68,7 +69,7 @@
 #' 
 #' 
 softbart_probit <- function(formula, data, test_data, num_tree = 20,
-                            k = 1, hypers = NULL, opts = NULL) {
+                            k = 1, hypers = NULL, opts = NULL, verbose = TRUE) {
   
   ## Get design matricies and groups for categorical
   
@@ -150,7 +151,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
     total = opts$num_burn, clear = FALSE, width= 60)
   
   for(i in 1:opts$num_burn) {
-    pb$tick()
+    if(verbose) pb$tick()
     ## Sample Z
     Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
                     mean = mu, sd = 1)
@@ -165,7 +166,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
     total = opts$num_save, clear = FALSE, width= 60)
   
   for(i in 1:opts$num_save) {
-    pb$tick()
+    if(verbose) pb$tick()
     for(j in 1:opts$num_thin) {
       ## Sample Z
       Z <- rtruncnorm(n = length(Y_train), a = lower, b = upper, 
