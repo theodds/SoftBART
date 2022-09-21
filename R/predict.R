@@ -15,13 +15,33 @@ predict_glmnet <- function (object, newx, s = c("lambda.1se", "lambda.min"), ...
   predict(object$glmnet.fit, newx, s = lambda, ...)
 }
 
-predict.softbart_probit <- function(object, newdata, iterations = NULL) {
+#' Predict for SoftBart Probit Regression
+#'
+#' Computes predictions from the softbart probit regression model for new data.
+#' 
+#' @param object A softbart_probit object obtained as output of the softbart_probit function
+#' @param newdata A dataset to construct predictions on
+#' @param iterations The iterations we want to get predictions on; includes all of iterations including warmup and thinning iterations. Defaults to the saved iterations, running from (num_burn + num_thin):(num_burn + num_thin * num_save)
+#' @param ... Other arguments passed to predict
+#'
+#' @return A list containing 
+#' \itemize{
+#'   \item mu: samples of mu for each observation, where pnorm(mu) is the success probability.
+#'   \item mu_mean: posterior mean of mu
+#'   \item p: samples of the success probability pnorm(mu) for each observation.
+#'   \item p_mean: posterior mean of p
+#' }
+#' @export
+#'
+#' @examples
+predict.softbart_probit <- function(object, newdata, iterations = NULL, ...) {
   stopifnot(class(object) == "softbart_probit")
   stopifnot(object$opts$cache_trees)
   
-  num_iter <- length(object$sigma_mu)
   form <- object$formula
-  if(is.null(iterations)) iterations <- 1:num_iter
+  opts <- object$opts
+  # if(is.null(iterations)) iterations <- (opts$num_burn+1):(opts$num_save+opts$num_burn)
+  if(is.null(iterations)) iterations <- seq(from = opts$num_burn+opts$num_thin, to = opts$num_burn + opts$num_thin * opts$num_save, by = opts$num_thin)
   
   suppressWarnings({
     X <- predict(dummyVars(form, data = newdata), newdata)
@@ -40,5 +60,7 @@ predict.softbart_probit <- function(object, newdata, iterations = NULL) {
   
   mu_hat <- colMeans(mu)
   p_hat <- colMeans(p)
+  
+  return(list(mu = mu, p = p, mu_mean = mu_hat, p_mean = p_hat))
   # plot(colMeans(mu), object$mu_test_mean)
 }

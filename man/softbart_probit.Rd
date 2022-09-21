@@ -47,9 +47,9 @@ Returns a list with the following components
   \item p_test_mean: posterior mean of p_test
   \item offset: we fit model of the form (offset + BART), with the offset estimated empirically prior to running the chain
   \item pnorm_offset: the pnorm of the offset, which is chosen to match the probability of the second factor level
-  \item cache_trees: if TRUE then the trees from all iterations are saved and can be used for future predictions
   \item formula: the formula specified by the user
   \item ecdfs: empirical distribution functions, used by the predict function
+  \item opts: the options used when running the chain
   \item forest: a forest object; see the MakeForest documentation for more details.
 }
 }
