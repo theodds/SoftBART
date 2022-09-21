@@ -75,8 +75,8 @@ plot(fit)
 
 ## Look at posterior model inclusion probabilities for each predictor. 
 
-plot(posterior_probs(fit), 
-     col = ifelse(posterior_probs(fit) > 0.5, scales::muted("blue"), 
+plot(posterior_probs(fit)[["post_probs"]], 
+     col = ifelse(posterior_probs(fit)[["post_probs"]] > 0.5, scales::muted("blue"), 
                   scales::muted("green")), 
      pch = 20)
 
