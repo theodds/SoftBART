@@ -21,6 +21,10 @@
 #'   \item mu_test: samples of the nonparametric function evaluated on the test set
 #'   \item mu_train_mean: posterior mean of mu_train
 #'   \item mu_test_mean: posterior mean of mu_test
+#'   \item formula: the formula specified by the user
+#'   \item ecdfs: empirical distribution functions, used by the predict function
+#'   \item opts: the options used when running the chain
+#'   \item mu_Y, sd_Y: used with the predict function to transform predictions
 #'   \item forest: a forest object; see the MakeForest documentation for more details.
 #' }
 #' @export
@@ -162,10 +166,16 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     
   }
   
-  return(list(sigma_mu = sigma_mu, varcounts = varcounts, sigma = sigma, 
+  out <- list(sigma_mu = sigma_mu, varcounts = varcounts, sigma = sigma, 
               mu_train = mu_train, mu_test = mu_test, 
               mu_train_mean = colMeans(mu_train), 
               mu_test_mean = colMeans(mu_test),
-              forest = reg_forest))
+              opts = opts, formula = formula, ecdfs = ecdfs,
+              mu_Y = mu_Y, sd_Y = sd_Y,
+              forest = reg_forest)
+  
+  class(out) <- "softbart_regression"
+  
+  return(out)
   
 }
