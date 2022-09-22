@@ -2,10 +2,10 @@ Package: SoftBart
 Type: Package
 Title: Implements the SoftBart Algorithm
 Version: 1.0.0
+Authors@R: 
+  person("Antonio", "Linero", "R.", email = "antonio.linero@austin.utexas.edu", role = c("aut", "cre"))
 Date: 2022-09-09
 Encoding: UTF-8
-Authors@R: person("Antonio", "Linero", 
-  email = "antonio.linero@austin.utexas.edu", role = c("aut", "cre"))
 Description: Implements the SoftBart model of described by Linero and Yang (2018) <doi:10.1111/rssb.12293>, with the optional use of a sparsity-inducing prior to allow for variable selection. For usability, the package maintains the same style as the 'BayesTree' package.
 License: GPL (>= 2)
 Imports:
