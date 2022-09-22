@@ -124,7 +124,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
   }
   
   ## Make forest ----
-  reg_forest <- MakeForest(hypers, opts)
+  reg_forest <- MakeForest(hypers, opts, FALSE)
   
   ## Initialize output
   
@@ -165,6 +165,8 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     mu_test[i,]   <- reg_forest$do_predict(X_test) * sd_Y + mu_Y
     
   }
+  
+  colnames(varcounts) <- names(group)
   
   out <- list(sigma_mu = sigma_mu, var_counts = varcounts, sigma = sigma, 
               mu_train = mu_train, mu_test = mu_test, 

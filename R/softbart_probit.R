@@ -138,7 +138,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   
   ## Make forest ----
   
-  probit_forest <- MakeForest(hypers, opts)
+  probit_forest <- MakeForest(hypers, opts, FALSE)
   
   ## Initialize Z
   
@@ -194,6 +194,8 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   
   p_train <- pnorm(mu_train)
   p_test  <- pnorm(mu_test)
+  
+  colnames(varcounts) <- names(group)
   
   out <- list(sigma_mu = sigma_mu, var_counts = varcounts, mu_train = mu_train,
               p_train = p_train, p_test = p_test,

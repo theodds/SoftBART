@@ -4,12 +4,14 @@
 \alias{MakeForest}
 \title{Create a Rcpp_Forest Object}
 \usage{
-MakeForest(hypers, opts)
+MakeForest(hypers, opts, warn = TRUE)
 }
 \arguments{
 \item{hypers}{List of hyperparameter values obtained from Hypers function}
 
 \item{opts}{List of MCMC chain settings obtained from Opts function}
+
+\item{warn}{If TRUE, reminds the user to normalize their design matrix when interacting with a forest object.}
 }
 \value{
 Returns an object of type Rcpp_Forest. It contains the following

@@ -6,6 +6,7 @@
 #'
 #' @param hypers List of hyperparameter values obtained from Hypers function
 #' @param opts List of MCMC chain settings obtained from Opts function
+#' @param warn If TRUE, reminds the user to normalize their design matrix when interacting with a forest object.
 #'
 #' @return Returns an object of type Rcpp_Forest. It contains the following
 #' functions.
@@ -30,7 +31,10 @@
 #' my_forest <- MakeForest(Hypers(X,Y), Opts())
 #' mu_hat <- my_forest$do_gibbs(X,Y,X,200)
 #' }
-MakeForest <- function(hypers, opts) {
+MakeForest <- function(hypers, opts, warn = TRUE) {
+  if(warn) {
+    warning("Reminder: make sure to normalize the columns of your design matrix to lie between 0 and 1 when running the Bayesian backfitting algorithm or using do_predict(). THIS IS YOUR RESPONSIBILITY, YOU WILL GET NONSENSE ANSWERS IF YOU DON'T DO THIS. Set warn = FALSE to disable this warning.") 
+  }
   mf <- Module(module = "mod_forest", PACKAGE = "SoftBart")
   return(new(mf$Forest, hypers, opts))
 }
