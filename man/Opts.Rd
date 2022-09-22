@@ -17,7 +17,7 @@ Opts(
   update_tau = TRUE,
   update_tau_mean = FALSE,
   update_sigma = TRUE,
-  cache_trees = FALSE
+  cache_trees = TRUE
 )
 }
 \arguments{

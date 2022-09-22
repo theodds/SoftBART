@@ -42,6 +42,10 @@ Returns a list with the following components
   \item mu_test: samples of the nonparametric function evaluated on the test set
   \item mu_train_mean: posterior mean of mu_train
   \item mu_test_mean: posterior mean of mu_test
+  \item formula: the formula specified by the user
+  \item ecdfs: empirical distribution functions, used by the predict function
+  \item opts: the options used when running the chain
+  \item mu_Y, sd_Y: used with the predict function to transform predictions
   \item forest: a forest object; see the MakeForest documentation for more details.
 }
 }
