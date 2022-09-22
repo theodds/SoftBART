@@ -16,7 +16,7 @@
 #' \itemize{
 #'   \item sigma_mu: samples of the standard deviation of the leaf node parameters
 #'   \item sigma: samples of the error standard deviation
-#'   \item varcounts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
+#'   \item var_counts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
 #'   \item mu_train: samples of the nonparametric function evaluated on the training set
 #'   \item mu_test: samples of the nonparametric function evaluated on the test set
 #'   \item mu_train_mean: posterior mean of mu_train
@@ -166,7 +166,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     
   }
   
-  out <- list(sigma_mu = sigma_mu, varcounts = varcounts, sigma = sigma, 
+  out <- list(sigma_mu = sigma_mu, var_counts = varcounts, sigma = sigma, 
               mu_train = mu_train, mu_test = mu_test, 
               mu_train_mean = colMeans(mu_train), 
               mu_test_mean = colMeans(mu_test),

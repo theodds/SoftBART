@@ -37,7 +37,7 @@ Returns a list with the following components
 \itemize{
   \item sigma_mu: samples of the standard deviation of the leaf node parameters
   \item sigma: samples of the error standard deviation
-  \item varcounts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
+  \item var_counts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
   \item mu_train: samples of the nonparametric function evaluated on the training set
   \item mu_test: samples of the nonparametric function evaluated on the test set
   \item mu_train_mean: posterior mean of mu_train

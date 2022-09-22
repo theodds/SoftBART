@@ -36,7 +36,7 @@ softbart_probit(
 Returns a list with the following components
 \itemize{
   \item sigma_mu: samples of the standard deviation of the leaf node parameters
-  \item varcounts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
+  \item var_counts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
   \item mu_train: samples of the nonparametric function evaluated on the training set; pnorm(mu_train) gives the success probabilities
   \item mu_test: samples of the nonparametric function evaluated on the test set; pnorm(mu_train) gives the success probabilities 
   \item p_train: samples of probabilities on training set
