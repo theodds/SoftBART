@@ -84,8 +84,8 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   terms <- attr(dv$terms, "term.labels")
   group <- dummy_assign(dv)
   suppressWarnings({
-    X_train <- predict(dummyVars(formula, data = data), data)
-    X_test  <- predict(dummyVars(formula, data = test_data), test_data)
+    X_train <- predict(dv, data)
+    X_test  <- predict(dv, test_data)
   })
   Y_train <- model.response(model.frame(formula, data))
   Y_test  <- model.response(model.frame(formula, test_data))
@@ -195,7 +195,7 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
   p_train <- pnorm(mu_train)
   p_test  <- pnorm(mu_test)
   
-  colnames(varcounts) <- names(group)
+  colnames(varcounts) <- terms
   
   out <- list(sigma_mu = sigma_mu, var_counts = varcounts, mu_train = mu_train,
               p_train = p_train, p_test = p_test,
@@ -209,7 +209,8 @@ softbart_probit <- function(formula, data, test_data, num_tree = 20,
               formula = formula,
               ecdfs = ecdfs,
               opts = opts,
-              forest = probit_forest)
+              forest = probit_forest,
+              dv = dv)
   
   class(out) <- "softbart_probit"
   return(out)

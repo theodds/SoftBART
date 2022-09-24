@@ -91,7 +91,7 @@ predict.softbart_probit <- function(object, newdata, iterations = NULL, ...) {
                       by = opts$num_thin)
   
   suppressWarnings({
-    X <- predict(dummyVars(form, data = newdata), newdata)
+    X <- predict(object$dv, newdata)
   })
   for(i in 1:ncol(X)) {
     X[,i] <- object$ecdfs[[i]](X[,i])
