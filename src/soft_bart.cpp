@@ -1380,7 +1380,7 @@ Hypers::Hypers(Rcpp::List hypers) {
 
   // Deal with other stuff
 
-  s = 1.0 / group.size() * arma::ones<arma::vec>(group.size());
+  s = 1.0 / num_groups * arma::ones<arma::vec>(num_groups);
   logs = log(s);
 
   group_to_vars.resize(s.size());

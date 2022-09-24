@@ -60,7 +60,7 @@ partial_dependence_regression <- function(fit, test_data, var_str, grid) {
     newdata <- test_data
     newdata[[var_str]] <- grid[[i]]
     preds <- predict.softbart_regression(object = fit, newdata = newdata)
-    out[[i]] <- data.frame(sample = 1:length(preds$mu_mean), 
+    out[[i]] <- data.frame(sample = nrow(preds$mu), 
                            mu = rowMeans(preds$mu))
     out[[i]][[var_str]] <- grid[[i]]
     out_mu[[i]] <- rowMeans(preds$mu)

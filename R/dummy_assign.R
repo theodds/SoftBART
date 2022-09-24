@@ -3,7 +3,7 @@ dummy_assign <- function(dummy) {
   group <- list()
   j     <- 0
   for(k in terms) {
-    if(k %in% dummy) {
+    if(k %in% dummy$facVars) {
       group[[k]] <- rep(j, length(dummy$lvls[[k]]))
     } else {
       group[[k]] <- j

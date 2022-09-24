@@ -76,8 +76,8 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
   terms <- attr(dv$terms, "term.labels")
   group <- dummy_assign(dv)
   suppressWarnings({
-    X_train <- predict(dummyVars(formula, data = data), data)
-    X_test  <- predict(dummyVars(formula, data = test_data), test_data)
+    X_train <- predict(dv, data)
+    X_test  <- predict(dv, test_data)
   })
   Y_train <- model.response(model.frame(formula, data))
   Y_test  <- model.response(model.frame(formula, test_data))
@@ -166,7 +166,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
     
   }
   
-  colnames(varcounts) <- names(group)
+  colnames(varcounts) <- terms
   
   out <- list(sigma_mu = sigma_mu, var_counts = varcounts, sigma = sigma, 
               mu_train = mu_train, mu_test = mu_test, 
@@ -174,7 +174,8 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
               mu_test_mean = colMeans(mu_test),
               opts = opts, formula = formula, ecdfs = ecdfs,
               mu_Y = mu_Y, sd_Y = sd_Y,
-              forest = reg_forest)
+              forest = reg_forest,
+              dv = dv)
   
   class(out) <- "softbart_regression"
   
