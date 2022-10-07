@@ -15,8 +15,8 @@ rmse(y, yhat)
 Returns the root mean-squared error.
 }
 \description{
-Computes the root mean-squared error between y and yhat, given by 
-sqrt(mean((y - yhat)^2)).
+Computes the root mean-squared error between \code{y} and \code{yhat}, given
+by \code{sqrt(mean((y - yhat)^2))}.
 }
 \examples{
 

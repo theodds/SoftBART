@@ -7,13 +7,14 @@
 quantile_normalize_bart(X)
 }
 \arguments{
-\item{X}{A design matrix, should not include a column of 1s.}
+\item{X}{A design matrix, should not include a column for the intercept.}
 }
 \value{
-A matrix X_norm such that each column gives the associated empirical quantile of each observation for each predictor.
+A matrix \code{X_norm} such that each column gives the associated
+  empirical quantile of each observation for each predictor.
 }
 \description{
-Performs a quantile normalization to each column of the matrix X
+Performs a quantile normalization to each column of the matrix \code{X}.
 }
 \examples{
 X <- matrix(rgamma(100 * 10, shape = 2), nrow = 100)

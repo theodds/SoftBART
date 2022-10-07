@@ -16,41 +16,41 @@ softbart_probit(
 )
 }
 \arguments{
-\item{formula}{A model formula with a binary factor on the left-hand-side and predictors on the right-hand-side}
+\item{formula}{A model formula with a binary factor on the left-hand-side and predictors on the right-hand-side.}
 
-\item{data}{A data.frame consisting of the training data}
+\item{data}{A data frame consisting of the training data.}
 
-\item{test_data}{A data.frame consisting of the testing data}
+\item{test_data}{A data frame consisting of the testing data.}
 
-\item{num_tree}{The number of trees in the ensemble to use}
+\item{num_tree}{The number of trees in the ensemble to use.}
 
-\item{k}{Determines the standard deviation of the leaf node parameters, which is given by 3 / k / sqrt(num_tree)}
+\item{k}{Determines the standard deviation of the leaf node parameters, which is given by \code{3 / k / sqrt(num_tree)}.}
 
-\item{hypers}{A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)}
+\item{hypers}{A list of hyperparameters constructed from the \code{Hypers()} function (\code{num_tree}, \code{k}, and \code{sigma_mu} are overridden by this function).}
 
-\item{opts}{A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)}
+\item{opts}{A list of options for running the chain constructed from the \code{Opts()} function (\code{update_sigma} is overridden by this function).}
 
-\item{verbose}{If TRUE, progress of the chain will be printed to the console.}
+\item{verbose}{If \code{TRUE}, progress of the chain will be printed to the console.}
 }
 \value{
-Returns a list with the following components
+Returns a list with the following components:
 \itemize{
-  \item sigma_mu: samples of the standard deviation of the leaf node parameters
-  \item var_counts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
-  \item mu_train: samples of the nonparametric function evaluated on the training set; pnorm(mu_train) gives the success probabilities
-  \item mu_test: samples of the nonparametric function evaluated on the test set; pnorm(mu_train) gives the success probabilities 
-  \item p_train: samples of probabilities on training set
-  \item p_test: samples of probabilities on test set
-  \item mu_train_mean: posterior mean of mu_train
-  \item mu_test_mean: posterior mean of mu_test
-  \item p_train_mean: posterior mean of p_train
-  \item p_test_mean: posterior mean of p_test
-  \item offset: we fit model of the form (offset + BART), with the offset estimated empirically prior to running the chain
-  \item pnorm_offset: the pnorm of the offset, which is chosen to match the probability of the second factor level
-  \item formula: the formula specified by the user
-  \item ecdfs: empirical distribution functions, used by the predict function
-  \item opts: the options used when running the chain
-  \item forest: a forest object; see the MakeForest documentation for more details.
+  \item \code{sigma_mu}: samples of the standard deviation of the leaf node parameters
+  \item \code{var_counts}: a matrix with a column for each predictor group containing the number of times each predictor is used in the ensemble at each iteration.
+  \item \code{mu_train}: samples of the nonparametric function evaluated on the training set; \code{pnorm(mu_train)} gives the success probabilities.
+  \item \code{mu_test}: samples of the nonparametric function evaluated on the test set; \code{pnorm(mu_train)} gives the success probabilities .
+  \item \code{p_train}: samples of probabilities on training set.
+  \item \code{p_test}: samples of probabilities on test set.
+  \item \code{mu_train_mean}: posterior mean of \code{mu_train}.
+  \item \code{mu_test_mean}: posterior mean of \code{mu_test}.
+  \item \code{p_train_mean}: posterior mean of \code{p_train}.
+  \item \code{p_test_mean}: posterior mean of \code{p_test}.
+  \item \code{offset}: we fit model of the form (offset + BART), with the offset estimated empirically prior to running the chain.
+  \item \code{pnorm_offset}: the \code{pnorm} of the offset, which is chosen to match the probability of the second factor level.
+  \item \code{formula}: the formula specified by the user.
+  \item \code{ecdfs}: empirical distribution functions, used by the \code{predict} function.
+  \item \code{opts}: the options used when running the chain.
+  \item \code{forest}: a forest object; see the \code{MakeForest} documentation for more details.
 }
 }
 \description{

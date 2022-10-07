@@ -16,43 +16,37 @@ pdsoftbart(
 )
 }
 \arguments{
-\item{X}{Training data covariates}
+\item{X}{Training data covariates.}
 
-\item{Y}{training data response}
+\item{Y}{Training data response.}
 
-\item{xind}{variables to create the partial dependence plots for}
+\item{xind}{Variables to create the partial dependence plots for.}
 
 \item{levs}{List of levels of the covariates to evaluate at.}
 
-\item{levquants}{Used if levs is not supplied; takes levs to be quantiles of associated predictors.}
+\item{levquants}{Used if \code{levs} is not supplied; takes \code{levs} to be quantiles of associated predictors.}
 
 \item{pl}{Create a plot?}
 
-\item{plquants}{Quantiles for the partial dependence plot}
+\item{plquants}{Quantiles for the partial dependence plot.}
 
 \item{...}{Additional arguments passed to softbart or plot.}
 }
 \value{
-Plot methods do not return anything. pdbart and pd2bart return lists with components given below. 
+Returns a list with components given below. 
 
 \itemize{
-  \item fd: A matrix (i,j) whose value is the ith draw of f_s(x_s) for the 
-            jth value of x_s. 'fd' is for 'function draws'.
-            For pd2softbart, fd is a single matrix, where the columns correspond 
-            to all possible pairs of values for the pair of variables 
-            indicated by xind. That is, all possible (x_i, x_j) where x_i is
-            a value in the levs component corresponding to the first x and 
-            x_j is a value in the levs component corresponding to the second
-            one. The first x changes first.
- \item levs: The list of levels used, each component corresponding to a 
- variable. If argument levs was supplied it is unchanged. Otherwise, the 
- levels in levs are constructed using argument levquants.
+  \item \code{fd}: A matrix whose \code{(i,j)}th value is the \code{i}th draw of the partial dependence function for the 
+            \code{j}th level.
+ \item \code{levs}: The list of levels used, each component corresponding to a 
+ variable. If the argument \code{levs} was supplied it is unchanged. Otherwise, the 
+ levels in levs are constructed using the argument \code{levquants}.
 }
-
-The remaining components returned in the list are the same as in the value of bart.
 }
 \description{
-Modified version of the pdbart function from the BayesTree package. 
-Run softbart at test observations constructed so that a plot can be created 
-displaying the effect of a single variable or pair of variables.
+Modified version of the \code{pdbart} function from the \code{BayesTree}
+package; largely supplanted by the \code{softbart_regression} and
+\code{partial_dependence_regression} functions. Runs \code{softbart} at test
+observations constructed so that a plot can be created displaying the effect
+of a single variable or pair of variables.
 }

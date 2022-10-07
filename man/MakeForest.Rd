@@ -2,39 +2,56 @@
 % Please edit documentation in R/MakeForest.R
 \name{MakeForest}
 \alias{MakeForest}
-\title{Create a Rcpp_Forest Object}
+\title{Create an Rcpp_Forest Object}
 \usage{
 MakeForest(hypers, opts, warn = TRUE)
 }
 \arguments{
-\item{hypers}{List of hyperparameter values obtained from Hypers function}
+\item{hypers}{A list of hyperparameter values obtained from \code{Hypers()} function}
 
-\item{opts}{List of MCMC chain settings obtained from Opts function}
+\item{opts}{A list of MCMC chain settings obtained from \code{Opts()} function}
 
-\item{warn}{If TRUE, reminds the user to normalize their design matrix when interacting with a forest object.}
+\item{warn}{If \code{TRUE}, reminds the user to normalize their design matrix when interacting with a forest object.}
 }
 \value{
-Returns an object of type Rcpp_Forest. It contains the following
-functions.
+Returns an object of type \code{Rcpp_Forest}. If \code{forest} is an
+  \code{Rcpp_Forest} object then it has the following methods.
 \itemize{
-  \item do_gibbs: forest$do_gibbs(X, Y, X_test, i) runs i iterations of the Bayesian backfitting algorithm and predicts on the test set X_test. The state of forest is also updated.
-  \item do_gibbs_weighted: forest$do_gibbs_weighted(X, Y, weights X_test, i) runs i iterations of the Bayesian backfitting algorithm and predicts on the test set X_test; assumes that Y is heteroskedastic with known weights. The state of forest is also updated.
-  \item do_predict: forest$do_predict(X) returns the predictions from a matrix X of predictors
-  \item get_counts: forest$get_counts() returns the number of times each variable has been used in a splitting rule
-  \item get_s: forest$get_s() returns the splitting probabilities of the forest
-  \item get_sigma: forest$get_sigma() returns the error standard deviation of the forest
-  \item get_sigma_mu: forest$get_sigma_mu() returns the standard deviation of the leaf node parameters
-  \item get_tree_counts: forest$get_tree_counts() returns a P x T matrix that counts the number of times each predictor is used in each tree
-  \item predict_iteration: forest$predict_iteration(X, i) returns the predictions from a matrix X of predictors at iteration i. Requires that opts$cache_trees = TRUE
-  \item set_s: forest$set_s(s) sets the splitting probabilities of the forest to s
-  \item set_sigma: forest$set_sigma(x) sets the error standard deviation of the forest to x
-  \item num_gibbs: forest$num_gibbs returns the number of iterations in total that the Gibbs sampler has been run
+  \item \code{forest$do_gibbs(X, Y, X_test, i)} runs \code{i} iterations of
+  the Bayesian backfitting algorithm and predicts on the test set
+  \code{X_test}. The state of forest is also updated.
+  \item \code{forest$do_gibbs_weighted(X, Y, weights X_test, i)} runs \code{i}
+  iterations of the Bayesian backfitting algorithm and predicts on the test
+  set \code{X_test}; assumes that \code{Y} is heteroskedastic with known weights. The state
+  of forest is also updated.
+  \item \code{forest$do_predict(X)} returns the predictions from a matrix \code{X}
+  of predictors.
+  \item \code{forest$get_counts()} returns the number of times each variable
+  has been used in a splitting rule at the current state of \code{forest}.
+  \item \code{forest$get_s()} returns the splitting probabilities of the
+  forest.
+  \item \code{forest$get_sigma()} returns the error standard deviation of the
+  forest.
+  \item \code{forest$get_sigma_mu()} returns the standard deviation of the
+  leaf node parameters.
+  \item \code{forest$get_tree_counts()} returns a matrix with a column for
+  each predictor and a row for each tree that counts the number of times each
+  predictor is used in each tree at the current state of \code{forest}.
+  \item \code{forest$predict_iteration(X, i)} returns the predictions from a
+  matrix \code{X} of predictors at iteration \code{i}. Requires that \code{opts$cache_trees =
+  TRUE} in \code{MakeForest(hypers, opts)}.
+  \item \code{forest$set_s(s)} sets the splitting probabilities of the forest
+  to \code{s}.
+  \item \code{forest$set_sigma(x)} sets the error standard deviation of the
+  forest to \code{x}.
+  \item \code{forest$num_gibbs} returns the number of iterations in total
+  that the Gibbs sampler has been run.
 }
 }
 \description{
-Make an object of type Rcpp_Forest, which can be used to embed SoftBART into 
-other larger models. Some examples are given in the inst/scripts folder, and
-more details will be available in a forthcoming manuscript of Linero (2022+).
+Make an object of type \code{Rcpp_Fores}t, which can be used to embed a soft
+BART model into other models. Some examples are given in the package
+vignette.
 }
 \examples{
 \donttest{

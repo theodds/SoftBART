@@ -22,11 +22,12 @@ trank <- function(x) {
 
 #' Quantile normalization for predictors
 #' 
-#' Performs a quantile normalization to each column of the matrix X
+#' Performs a quantile normalization to each column of the matrix \code{X}.
 #'
-#' @param X A design matrix, should not include a column of 1s. 
+#' @param X A design matrix, should not include a column for the intercept.
 #'
-#' @return A matrix X_norm such that each column gives the associated empirical quantile of each observation for each predictor.
+#' @return A matrix \code{X_norm} such that each column gives the associated
+#'   empirical quantile of each observation for each predictor.
 #'
 #' @examples
 #' X <- matrix(rgamma(100 * 10, shape = 2), nrow = 100)
@@ -39,18 +40,22 @@ quantile_normalize_bart <- function(X) {
 
 #' Preprocess a dataset for use with SoftBart
 #' 
-#' Preprocesses a dataset for use with softbart. Returns a data matrix X that
-#' will work with categorical predictors, and a vector of group indicators; this
-#' is required to get sensible variable selection for categorical variables, and
-#' should be passed in as the group argument to Hypers.
+#' Preprocesses a data frame for use with \code{softbart}; not needed with other
+#' model fitting functions, but may also be useful when designing custom methods
+#' with \code{MakeForest}. Returns a data matrix X that will work with
+#' categorical predictors, and a vector of group indicators; this is required to
+#' get sensible variable selection for categorical variables, and should be
+#' passed in as the group argument to \code{Hypers}.
 #'
-#' @param X A data.frame, possibly containing categorical variables
+#' @param X A data frame, possibly containing categorical variables stored as
+#'   factors.
 #'
 #' @return A list containing two elements.
 #' \itemize{
-#'   \item X: a matrix X consisting of the columns of the input data.frame, with
-#'            separate columns for the different levels of categorical variables.
-#'   \item group: a vector of group memberships of the columns of X.
+#'   \item \code{X}: a matrix consisting of the columns of the input data frame,
+#'   with separate columns for the different levels of categorical variables.
+#'   \item \code{group}: a vector of group memberships of the predictors in
+#'   \code{X}, to be passed as an argument to \code{Hypers}.
 #' }
 #'
 #' @examples

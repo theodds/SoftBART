@@ -7,16 +7,17 @@
 posterior_probs(fit)
 }
 \arguments{
-\item{fit}{An object of class softbart}
+\item{fit}{An object of class \code{softbart}, \code{softbart_regression}, or
+\code{softbart_probit}.}
 }
 \value{
 A list containing the following:
 \itemize{
-  \item varimp: a vector containing the average number of times a predictor
+  \item \code{varimp}: a vector containing the average number of times a predictor
                 was used in a splitting rule.
-  \item post_probs: the posterior inclusion probabilities for each predictor.
-  \item median_probability_model: a vector containing the indicies of the
-    variables included in at least 50% of the samples.
+  \item \code{post_probs}: the posterior inclusion probabilities for each predictor.
+  \item \code{median_probability_model}: a vector containing the indicies of the
+    variables included in at least 50 percent of the samples.
 }
 }
 \description{

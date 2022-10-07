@@ -2,7 +2,7 @@
 % Please edit documentation in R/SoftBart.R
 \name{Hypers}
 \alias{Hypers}
-\title{Create hyperparameter object for SoftBart}
+\title{Create a list of hyperparameter values}
 \usage{
 Hypers(
   X,
@@ -27,48 +27,48 @@ Hypers(
 )
 }
 \arguments{
-\item{X}{NxP matrix of training data covariates.}
+\item{X}{A matrix of training data covariates.}
 
-\item{Y}{Nx1 vector of training data response.}
+\item{Y}{A vector of training data responses.}
 
-\item{group}{For each column of X, gives the associated group}
+\item{group}{Allows for grouping of covariates with shared splitting proportions, which is useful for categorical dummy variables. For each column of \code{X}, \code{group} gives the associated group.}
 
-\item{alpha}{Positive constant controlling the sparsity level}
+\item{alpha}{Positive constant controlling the sparsity level.}
 
-\item{beta}{Parameter penalizing tree depth in the branching process prior}
+\item{beta}{Parameter penalizing tree depth in the branching process prior.}
 
-\item{gamma}{Parameter penalizing new nodes in the branching process prior}
+\item{gamma}{Parameter penalizing new nodes in the branching process prior.}
 
-\item{k}{Related to the signal-to-noise ratio, sigma_mu = 0.5 / (sqrt(num_tree) * k). BART defaults to k = 2.}
+\item{k}{Related to the signal-to-noise ratio, \code{sigma_mu = 0.5 / (sqrt(num_tree) * k)}. BART defaults to \code{k = 2} after applying the max/min normalization to the outcome.}
 
-\item{sigma_hat}{A prior guess at the conditional variance of Y. If not provided, this is estimated empirically by linear regression.}
+\item{sigma_hat}{A prior guess at the conditional variance of \code{Y} given \code{X}. If not provided, this is estimated empirically by linear regression.}
 
-\item{shape}{Shape parameter for gating probabilities}
+\item{shape}{Shape parameter for gating probabilities.}
 
-\item{width}{Bandwidth of gating probabilities}
+\item{width}{Bandwidth of gating probabilities.}
 
-\item{num_tree}{Number of trees in the ensemble}
+\item{num_tree}{Number of trees in the ensemble.}
 
-\item{alpha_scale}{Scale of the prior for alpha; if not provided, defaults to P}
+\item{alpha_scale}{Scale of the prior for \code{alpha}; if not provided, defaults to the number of predictors.}
 
-\item{alpha_shape_1}{Shape parameter for prior on alpha; if not provided, defaults to 0.5}
+\item{alpha_shape_1}{Shape parameter for prior on \code{alpha}; if not provided, defaults to 0.5.}
 
-\item{alpha_shape_2}{Shape parameter for prior on alpha; if not provided, defaults to 1.0}
+\item{alpha_shape_2}{Shape parameter for prior on \code{alpha}; if not provided, defaults to 1.0.}
 
-\item{tau_rate}{Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10}
+\item{tau_rate}{Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10.}
 
-\item{num_tree_prob}{Parameter for geometric prior on number of tree}
+\item{num_tree_prob}{Parameter for geometric prior on number of tree.}
 
 \item{temperature}{The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.}
 
-\item{weights}{A vector of weights, with the variance of an observation given by sigma_sq / weight}
+\item{weights}{Only used by the function \code{softbart}, this is a vector of weights to be used in heteroskedastic regression models, with the variance of an observation given by \code{sigma_sq / weight}.}
 
-\item{normalize_Y}{Do you want to apply the standard BART max/min normalization to (-0.5, 0.5) for the outcome?}
+\item{normalize_Y}{Do you want to compute \code{sigma_hat} after applying the standard BART max/min normalization to \eqn{(-0.5, 0.5)} for the outcome? If \code{FALSE}, no normalization is applied. This might be useful for fitting custom models where the outcome is normalized by hand.}
 }
 \value{
 Returns a list containing the function arguments.
 }
 \description{
-Creates a list which holds all the hyperparameters for use with the softbart
-command.
+Creates a list which holds all the hyperparameters for use with the
+model-fitting functions and with the \code{MakeForest} functionality.
 }

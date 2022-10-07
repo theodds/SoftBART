@@ -19,56 +19,57 @@ vc_softbart_regression(
 )
 }
 \arguments{
-\item{formula}{A model formula with a numeric variable on the left-hand-side and non-linear predictors on the right-hand-side}
+\item{formula}{A model formula with a numeric variable on the left-hand-side and non-linear predictors on the right-hand-side.}
 
-\item{linear_var_name}{A string containing the variable in the data that is to be treated linearly}
+\item{linear_var_name}{A string containing the variable in the data that is to be treated linearly.}
 
-\item{data}{A data.frame consisting of the training data}
+\item{data}{A data frame consisting of the training data.}
 
-\item{test_data}{A data.frame consisting of the testing data}
+\item{test_data}{A data frame consisting of the testing data.}
 
-\item{num_tree}{The number of trees in the ensemble to use}
+\item{num_tree}{The number of trees in the ensemble to use.}
 
 \item{k}{Determines the standard deviation of the leaf node parameters, which
-is given by 3 / k / sqrt(num_tree) (intercept) and defaults to
-1/k/sqrt(num_tree) (slope). This can be modified for the slope by
-specifying your own hypers.}
+is given by \code{3 / k / sqrt(num_tree)} (intercept) and defaults to
+\code{1/k/sqrt(num_tree)} (slope). This can be modified for the slope by
+specifying your own hyperparameter.}
 
-\item{hypers_intercept}{A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)}
+\item{hypers_intercept}{A list of hyperparameters constructed from the \code{Hypers()} function (\code{num_tree}, \code{k}, and \code{sigma_mu} are overridden by this function).}
 
-\item{hypers_slope}{A list of hyperparameters constructed from the Hypers() function (num_tree is overridden by this function)}
+\item{hypers_slope}{A list of hyperparameters constructed from the \code{Hypers()} function (\code{num_tree} is overridden by this function).}
 
-\item{opts}{A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)}
+\item{opts}{A list of options for running the chain constructed from the \code{Opts()} function (\code{update_sigma} is overridden by this function).}
 
-\item{verbose}{If TRUE, progress of the chain will be printed to the console.}
+\item{verbose}{If \code{TRUE}, progress of the chain will be printed to the console.}
 
-\item{warn}{If TRUE, remind the user that they probably don't want the linear term to be included in the formula for the nonlinear part}
+\item{warn}{If \code{TRUE}, remind the user that they probably don't want the linear term to be included in the formula for the nonlinear part.}
 }
 \value{
 Returns a list with the following components
 \itemize{
-  \item sigma_mu_alpha: samples of the standard deviation of the leaf node parameters for the intercept
-  \item sigma_mu_beta: samples of the standard deviation of the leaf node parameters for the slope
-  \item sigma: samples of the error standard deviation
-  \item var_counts_alpha: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration for the intercept
-  \item var_counts_alpha: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration for the slope
-  \item alpha_train: samples of the nonparametric intercept evaluated on the training set
-  \item alpha_test: samples of the nonparametric intercept evaluated on the test set
-  \item beta_train: samples of the nonparametric slope evaluated on the training set
-  \item beta_test: samples of the nonparametric slope evaluated on the test set
-  \item mu_train: samples of the predictions evaluated on the training set
-  \item mu_test: samples of the predictions evaluated on the test set
-  \item formula: the formula specified by the user
-  \item ecdfs: empirical distribution functions, used by the predict function
-  \item opts: the options used when running the chain
-  \item mu_Y, sd_Y: used with the predict function to transform predictions
-  \item alpha_forest: a forest object for the intercept; see the MakeForest documentation for more details.
-  \item beta_forest: a forest object for the slope; see the MakeForest documentation for more details.
+  \item \code{sigma_mu_alpha}: samples of the standard deviation of the leaf node parameters for the intercept.
+  \item \code{sigma_mu_beta}: samples of the standard deviation of the leaf node parameters for the slope.
+  \item \code{sigma}: samples of the error standard deviation.
+  \item \code{var_counts_alpha}: a matrix with a column for each predictor group containing the number of times each predictor is used in the ensemble at each iteration for the intercept.
+  \item \code{var_counts_beta}: a matrix with a column for each predictor group containing the number of times each predictor is used in the ensemble at each iteration for the slope.
+  \item \code{alpha_train}: samples of the nonparametric intercept evaluated on the training set.
+  \item \code{alpha_test}: samples of the nonparametric intercept evaluated on the test set.
+  \item \code{beta_train}: samples of the nonparametric slope evaluated on the training set.
+  \item \code{beta_test}: samples of the nonparametric slope evaluated on the test set.
+  \item \code{mu_train}: samples of the predictions evaluated on the training set.
+  \item \code{mu_test}: samples of the predictions evaluated on the test set.
+  \item \code{formula}: the formula specified by the user.
+  \item \code{ecdfs}: empirical distribution functions, used by the \code{predict} function.
+  \item \code{opts}: the options used when running the chain.
+  \item \code{mu_Y, sd_Y}: used with the \code{predict} function to transform predictions.
+  \item \code{alpha_forest}: a forest object for the intercept; see the \code{MakeForest} documentation for more details.
+  \item \code{beta_forest}: a forest object for the slope; see the \code{MakeForest} documentation for more details.
 }
 }
 \description{
 Fits a semiparametric varying coefficient regression model with the
-nonparametric slope and intercept using a SoftBart model
+nonparametric slope and intercept \deqn{Y = \alpha(X) + Z \beta(X) +
+\epsilon}{Y = alpha + Z * beta(X) + epsilon} using a soft BART model.
 }
 \examples{
 

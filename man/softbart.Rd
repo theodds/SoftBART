@@ -7,37 +7,39 @@
 softbart(X, Y, X_test, hypers = NULL, opts = Opts(), verbose = TRUE)
 }
 \arguments{
-\item{X}{NxP matrix of training data covariates}
+\item{X}{A matrix of training data covariates.}
 
-\item{Y}{Nx1 vector of training data responses}
+\item{Y}{A vector of training data responses.}
 
-\item{X_test}{NxP matrix of test data covariates}
+\item{X_test}{A matrix of test data covariates}
 
-\item{hypers}{List of hyperparameter values obtained from Hypers function}
+\item{hypers}{A ;ist of hyperparameter values obtained from \code{Hypers} function}
 
-\item{opts}{List of MCMC chain settings obtained from Opts function}
+\item{opts}{A list of MCMC chain settings obtained from \code{Opts} function}
 
-\item{verbose}{If TRUE, progress of the chain will be printed to the console.}
+\item{verbose}{If \code{TRUE}, progress of the chain will be printed to the console.}
 }
 \value{
 Returns a list with the following components:
 \itemize{
-  \item y_hat_train: fit to the training data for each iteration of the chain
-  \item y_hat_test: fit to the testing data for each iteration of the chain
-  \item y_hat_train_mean: fit to the training data, averaged over iterations
-  \item y_hat_test_mean: fit to the testing data, averaged over iterations
-  \item sigma: posterior samples of the error standard deviations
-  \item sigma_mu: posterior samples of sigma_mu, the standard deviation of the leaf node parameters
-  \item s: posterior samples of s
-  \item alpha: posterior samples of alpha
-  \item beta: posterior samples of beta
-  \item gamma: posterior samples of gamma
-  \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
-  \item num_leaves_final: the number of leaves for each tree at the final iteration
+  \item \code{y_hat_train}: predicted values for the training data for each iteration of the chain.
+  \item \code{y_hat_test}: predicted values for the test data for each iteration of the chain.
+  \item \code{y_hat_train_mean}: predicted values for the training data, averaged over iterations.
+  \item \code{y_hat_test_mean}: predicted values for the test data, averaged over iterations.
+  \item \code{sigma}: posterior samples of the error standard deviations.
+  \item \code{sigma_mu}: posterior samples of \code{sigma_mu}, the standard deviation of the leaf node parameters.
+  \item \code{s}: posterior samples of \code{s}.
+  \item \code{alpha}: posterior samples of \code{alpha}.
+  \item \code{beta}: posterior samples of \code{beta}.
+  \item \code{gamma}: posterior samples of \code{gamma}.
+  \item \code{k}: posterior samples of \code{k = 0.5 / (sqrt(num_tree) * sigma_mu)}
+  \item \code{num_leaves_final}: the number of leaves for each tree at the final iteration.
 }
 }
 \description{
-Runs the Markov chain for the softbart model and collects the output
+Runs the Markov chain for the semiparametric Gaussian model \deqn{Y = r(X) +
+\epsilon}{Y = r(X) + epsilon} and collects the output, where \eqn{r(x)}{r(x)}
+is modeled using a soft BART model.
 }
 \examples{
 

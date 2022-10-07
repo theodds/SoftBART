@@ -1,27 +1,27 @@
-#' Create hyperparameter object for SoftBart
+#' Create a list of hyperparameter values
 #'
-#' Creates a list which holds all the hyperparameters for use with the softbart
-#' command.
+#' Creates a list which holds all the hyperparameters for use with the
+#' model-fitting functions and with the \code{MakeForest} functionality.
 #'
-#' @param X NxP matrix of training data covariates.
-#' @param Y Nx1 vector of training data response.
-#' @param group For each column of X, gives the associated group
-#' @param alpha Positive constant controlling the sparsity level
-#' @param beta Parameter penalizing tree depth in the branching process prior
-#' @param gamma Parameter penalizing new nodes in the branching process prior
-#' @param k Related to the signal-to-noise ratio, sigma_mu = 0.5 / (sqrt(num_tree) * k). BART defaults to k = 2.
-#' @param sigma_hat A prior guess at the conditional variance of Y. If not provided, this is estimated empirically by linear regression.
-#' @param shape Shape parameter for gating probabilities
-#' @param width Bandwidth of gating probabilities
-#' @param num_tree Number of trees in the ensemble
-#' @param alpha_scale Scale of the prior for alpha; if not provided, defaults to P
-#' @param alpha_shape_1 Shape parameter for prior on alpha; if not provided, defaults to 0.5
-#' @param alpha_shape_2 Shape parameter for prior on alpha; if not provided, defaults to 1.0
-#' @param tau_rate Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10
-#' @param num_tree_prob Parameter for geometric prior on number of tree
+#' @param X A matrix of training data covariates.
+#' @param Y A vector of training data responses.
+#' @param group Allows for grouping of covariates with shared splitting proportions, which is useful for categorical dummy variables. For each column of \code{X}, \code{group} gives the associated group.
+#' @param alpha Positive constant controlling the sparsity level.
+#' @param beta Parameter penalizing tree depth in the branching process prior.
+#' @param gamma Parameter penalizing new nodes in the branching process prior.
+#' @param k Related to the signal-to-noise ratio, \code{sigma_mu = 0.5 / (sqrt(num_tree) * k)}. BART defaults to \code{k = 2} after applying the max/min normalization to the outcome.
+#' @param sigma_hat A prior guess at the conditional variance of \code{Y} given \code{X}. If not provided, this is estimated empirically by linear regression.
+#' @param shape Shape parameter for gating probabilities.
+#' @param width Bandwidth of gating probabilities.
+#' @param num_tree Number of trees in the ensemble.
+#' @param alpha_scale Scale of the prior for \code{alpha}; if not provided, defaults to the number of predictors.
+#' @param alpha_shape_1 Shape parameter for prior on \code{alpha}; if not provided, defaults to 0.5.
+#' @param alpha_shape_2 Shape parameter for prior on \code{alpha}; if not provided, defaults to 1.0.
+#' @param tau_rate Rate parameter for the bandwidths of the trees with an exponential prior; defaults to 10.
+#' @param num_tree_prob Parameter for geometric prior on number of tree.
 #' @param temperature The temperature applied to the posterior distribution; set to 1 unless you know what you are doing.
-#' @param weights A vector of weights, with the variance of an observation given by sigma_sq / weight
-#' @param normalize_Y Do you want to apply the standard BART max/min normalization to (-0.5, 0.5) for the outcome?
+#' @param weights Only used by the function \code{softbart}, this is a vector of weights to be used in heteroskedastic regression models, with the variance of an observation given by \code{sigma_sq / weight}.
+#' @param normalize_Y Do you want to compute \code{sigma_hat} after applying the standard BART max/min normalization to \eqn{(-0.5, 0.5)} for the outcome? If \code{FALSE}, no normalization is applied. This might be useful for fitting custom models where the outcome is normalized by hand.
 #'
 #' @return Returns a list containing the function arguments.
 Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
@@ -72,23 +72,23 @@ Hypers <- function(X,Y, group = NULL, alpha = 1, beta = 2, gamma = 0.95, k = 2,
 
 #' MCMC options for SoftBart
 #'
-#' Creates a list which provides the parameters for running the Markov chain.
+#' Creates a list that provides the parameters for running the Markov chain.
 #'
 #' @param num_burn Number of warmup iterations for the chain.
 #' @param num_thin Thinning interval for the chain.
-#' @param num_save The number of samples to collect; in total, num_burn + num_save * num_thin iterations are run
-#' @param num_print Interval for how often to print the chain's progress
-#' @param update_sigma_mu If true, sigma_mu/k are updated, with a half-Cauchy prior on sigma_mu centered at the initial guess
-#' @param update_sigma If true, sigma is updated, with a half-Cauchy prior on sigma centered at the initial guess
-#' @param update_s If true, s is updated using the Dirichlet prior.
-#' @param update_alpha If true, alpha is updated using a scaled beta prime prior
-#' @param update_beta If true, beta is updated using a Normal(0,2^2) prior
-#' @param update_gamma If true, gamma is updated using a Uniform(0.5, 1) prior
-#' @param update_tau If true, tau is updated for each tree
-#' @param update_tau_mean If true, the mean of tau is updated
-#' @param cache_trees If true, we save the trees for each MCMC iteration when using the MakeForest interface
+#' @param num_save The number of samples to collect; in total, \code{num_burn + num_save * num_thin} iterations are run.
+#' @param num_print Interval for how often to print the chain's progress.
+#' @param update_sigma_mu If \code{TRUE}, \code{sigma_mu} is  updated, with a half-Cauchy prior on \code{sigma_mu} centered at the initial guess.
+#' @param update_sigma If \code{TRUE}, \code{sigma} is updated, with a half-Cauchy prior on \code{sigma} centered at the initial guess.
+#' @param update_s If \code{TRUE}, \code{s} is updated using the Dirichlet prior \eqn{s \sim D(\alpha / P, \ldots, \alpha / P)} where \eqn{P} is the number of covariates.
+#' @param update_alpha If \code{TRUE}, \code{alpha} is updated using a scaled beta prime prior.
+#' @param update_beta If \code{TRUE}, \code{beta} is updated using a normal prior with mean 0 and variance 4.
+#' @param update_gamma If \code{TRUE}, gamma is updated using a Uniform(0.5, 1) prior.
+#' @param update_tau If \code{TRUE}, the bandwidth \code{tau} is updated for each tree
+#' @param update_tau_mean If \code{TRUE}, the mean of \code{tau} is updated
+#' @param cache_trees If \code{TRUE}, we save the trees for each MCMC iteration when using the MakeForest interface
 #'
-#' @return Returns a list containing the function arguments
+#' @return Returns a list containing the function arguments.
 Opts <- function(num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
                  update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
                  update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
@@ -129,29 +129,31 @@ unnormalize_bart <- function(z, a, b) {
 
 #' Fits the SoftBart model
 #'
-#' Runs the Markov chain for the softbart model and collects the output
+#' Runs the Markov chain for the semiparametric Gaussian model \deqn{Y = r(X) +
+#' \epsilon}{Y = r(X) + epsilon} and collects the output, where \eqn{r(x)}{r(x)}
+#' is modeled using a soft BART model.
 #'
-#' @param X NxP matrix of training data covariates
-#' @param Y Nx1 vector of training data responses
-#' @param X_test NxP matrix of test data covariates
-#' @param hypers List of hyperparameter values obtained from Hypers function
-#' @param opts List of MCMC chain settings obtained from Opts function
-#' @param verbose If TRUE, progress of the chain will be printed to the console.
+#' @param X A matrix of training data covariates.
+#' @param Y A vector of training data responses.
+#' @param X_test A matrix of test data covariates
+#' @param hypers A ;ist of hyperparameter values obtained from \code{Hypers} function
+#' @param opts A list of MCMC chain settings obtained from \code{Opts} function
+#' @param verbose If \code{TRUE}, progress of the chain will be printed to the console.
 #'
 #' @return Returns a list with the following components:
 #' \itemize{
-#'   \item y_hat_train: fit to the training data for each iteration of the chain
-#'   \item y_hat_test: fit to the testing data for each iteration of the chain
-#'   \item y_hat_train_mean: fit to the training data, averaged over iterations
-#'   \item y_hat_test_mean: fit to the testing data, averaged over iterations
-#'   \item sigma: posterior samples of the error standard deviations
-#'   \item sigma_mu: posterior samples of sigma_mu, the standard deviation of the leaf node parameters
-#'   \item s: posterior samples of s
-#'   \item alpha: posterior samples of alpha
-#'   \item beta: posterior samples of beta
-#'   \item gamma: posterior samples of gamma
-#'   \item k: posterior samples of k = 0.5 / (sqrt(num_tree) * sigma_mu)
-#'   \item num_leaves_final: the number of leaves for each tree at the final iteration
+#'   \item \code{y_hat_train}: predicted values for the training data for each iteration of the chain.
+#'   \item \code{y_hat_test}: predicted values for the test data for each iteration of the chain.
+#'   \item \code{y_hat_train_mean}: predicted values for the training data, averaged over iterations.
+#'   \item \code{y_hat_test_mean}: predicted values for the test data, averaged over iterations.
+#'   \item \code{sigma}: posterior samples of the error standard deviations.
+#'   \item \code{sigma_mu}: posterior samples of \code{sigma_mu}, the standard deviation of the leaf node parameters.
+#'   \item \code{s}: posterior samples of \code{s}.
+#'   \item \code{alpha}: posterior samples of \code{alpha}.
+#'   \item \code{beta}: posterior samples of \code{beta}.
+#'   \item \code{gamma}: posterior samples of \code{gamma}.
+#'   \item \code{k}: posterior samples of \code{k = 0.5 / (sqrt(num_tree) * sigma_mu)}
+#'   \item \code{num_leaves_final}: the number of leaves for each tree at the final iteration.
 #' }
 #' 
 #' @examples

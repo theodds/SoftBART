@@ -17,17 +17,17 @@ predict_glmnet <- function (object, newx, s = c("lambda.1se", "lambda.min"), ...
 
 #' Predict for SoftBart Regression
 #'
-#' Computes predictions from the softbart regression model for new data.
+#' Computes predictions from a \code{softbart_regression} object on new data.
 #' 
-#' @param object A softbart_probit object obtained as output of the softbart_regression function
-#' @param newdata A dataset to construct predictions on
-#' @param iterations The iterations we want to get predictions on; includes all of iterations including warmup and thinning iterations. Defaults to the saved iterations, running from (num_burn + num_thin):(num_burn + num_thin * num_save)
-#' @param ... Other arguments passed to predict
+#' @param object A \code{softbart_regression} object obtained as output of the \code{softbart_regression()} function.
+#' @param newdata A dataset to construct predictions on.
+#' @param iterations The iterations to get predictions on; includes all of iterations including burn-in and thinning iterations. Defaults to the saved iterations, running from \code{(num_burn + num_thin):(num_burn + num_thin * num_save)}.
+#' @param ... Other arguments passed to predict.
 #'
 #' @return A list containing 
 #' \itemize{
-#'   \item mu: samples of mu for each observation, where pnorm(mu) is the success probability.
-#'   \item mu_mean: posterior mean of mu
+#'   \item \code{mu}: samples of the predicted value for each observation and iteration.
+#'   \item \code{mu_mean}: posterior predicted values for each observation.
 #' }
 #' @export
 #'
@@ -62,19 +62,19 @@ predict.softbart_regression <- function(object, newdata, iterations = NULL, ...)
 
 #' Predict for SoftBart Probit Regression
 #'
-#' Computes predictions from the softbart probit regression model for new data.
+#' Computes predictions from a \code{softbart_probit} object for new data.
 #' 
-#' @param object A softbart_probit object obtained as output of the softbart_probit function
-#' @param newdata A dataset to construct predictions on
-#' @param iterations The iterations we want to get predictions on; includes all of iterations including warmup and thinning iterations. Defaults to the saved iterations, running from (num_burn + num_thin):(num_burn + num_thin * num_save)
-#' @param ... Other arguments passed to predict
+#' @param object A \code{softbart_probit} object obtained as output of the \code{softbart_probit} function.
+#' @param newdata A dataset to construct predictions on.
+#' @param iterations The iterations get predictions on; includes all of iterations including burn-in and thinning iterations. Defaults to the saved iterations, running from \code{(num_burn + num_thin):(num_burn + num_thin * num_save)}.
+#' @param ... Other arguments passed to predict.
 #'
 #' @return A list containing 
 #' \itemize{
-#'   \item mu: samples of mu for each observation, where pnorm(mu) is the success probability.
-#'   \item mu_mean: posterior mean of mu
-#'   \item p: samples of the success probability pnorm(mu) for each observation.
-#'   \item p_mean: posterior mean of p
+#'   \item \code{mu}: samples of the nonparametric function for each observation, where \code{pnorm(mu)} is the success probability.
+#'   \item \code{mu_mean}: posterior mean of mu.
+#'   \item \code{p}: samples of the success probability \code{pnorm(mu)} for each observation.
+#'   \item \code{p_mean}: posterior mean of \code{p}.
 #' }
 #' @export
 #'

@@ -3,29 +3,29 @@
 #' Fits a semiparametric regression model with the nonparametric function
 #' modeled using a SoftBart model.
 #'
-#' @param formula A model formula with a numeric variable on the left-hand-side and predictors on the right-hand-side
-#' @param data A data.frame consisting of the training data
-#' @param test_data A data.frame consisting of the testing data
-#' @param num_tree The number of trees in the ensemble to use
-#' @param k Determines the standard deviation of the leaf node parameters, which is given by 3 / k / sqrt(num_tree)
-#' @param hypers A list of hyperparameters constructed from the Hypers() function (num_tree, k, and sigma_mu are overridden by this function)
-#' @param opts A list of options for runing the chain constructed from the Opts() function (update_sigma is overridden by this function)
-#' @param verbose If TRUE, progress of the chain will be printed to the console.
+#' @param formula A model formula with a numeric variable on the left-hand-side and predictors on the right-hand-side.
+#' @param data A data frame consisting of the training data.
+#' @param test_data A data frame consisting of the testing data.
+#' @param num_tree The number of trees in the ensemble to use.
+#' @param k Determines the standard deviation of the leaf node parameters, which is given by \code{3 / k / sqrt(num_tree)}.
+#' @param hypers A list of hyperparameters constructed from the \code{Hypers()} function (\code{num_tree}, \code{k}, and \code{sigma_mu} are overridden by this function).
+#' @param opts A list of options for running the chain constructed from the \code{Opts()} function (\code{update_sigma} is overridden by this function).
+#' @param verbose If \code{TRUE}, progress of the chain will be printed to the console.
 #'
-#' @return Returns a list with the following components
+#' @return Returns a list with the following components:
 #' \itemize{
-#'   \item sigma_mu: samples of the standard deviation of the leaf node parameters
-#'   \item sigma: samples of the error standard deviation
-#'   \item var_counts: a matrix with P columns containing the number of times each predictor is used in the ensemble at each iteration
-#'   \item mu_train: samples of the nonparametric function evaluated on the training set
-#'   \item mu_test: samples of the nonparametric function evaluated on the test set
-#'   \item mu_train_mean: posterior mean of mu_train
-#'   \item mu_test_mean: posterior mean of mu_test
-#'   \item formula: the formula specified by the user
-#'   \item ecdfs: empirical distribution functions, used by the predict function
-#'   \item opts: the options used when running the chain
-#'   \item mu_Y, sd_Y: used with the predict function to transform predictions
-#'   \item forest: a forest object; see the MakeForest documentation for more details.
+#'   \item \code{sigma_mu}: samples of the standard deviation of the leaf node parameters.
+#'   \item \code{sigma}: samples of the error standard deviation.
+#'   \item \code{var_counts}: a matrix with a column for each predictor group containing the number of times each predictor is used in the ensemble at each iteration.
+#'   \item \code{mu_train}: samples of the nonparametric function evaluated on the training set.
+#'   \item \code{mu_test}: samples of the nonparametric function evaluated on the test set.
+#'   \item \code{mu_train_mean}: posterior mean of \code{mu_train}.
+#'   \item \code{mu_test_mean}: posterior mean of \code{mu_test}.
+#'   \item \code{formula}: the formula specified by the user.
+#'   \item \code{ecdfs}: empirical distribution functions, used by the \code{predict} function.
+#'   \item \code{opts}: the options used when running the chain.
+#'   \item \code{mu_Y, sd_Y}: used with the predict function to transform predictions.
+#'   \item \code{forest}: a forest object; see the \code{MakeForest} documentation for more details.
 #' }
 #' @export
 #'

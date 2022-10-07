@@ -25,31 +25,31 @@ Opts(
 
 \item{num_thin}{Thinning interval for the chain.}
 
-\item{num_save}{The number of samples to collect; in total, num_burn + num_save * num_thin iterations are run}
+\item{num_save}{The number of samples to collect; in total, \code{num_burn + num_save * num_thin} iterations are run.}
 
-\item{num_print}{Interval for how often to print the chain's progress}
+\item{num_print}{Interval for how often to print the chain's progress.}
 
-\item{update_sigma_mu}{If true, sigma_mu/k are updated, with a half-Cauchy prior on sigma_mu centered at the initial guess}
+\item{update_sigma_mu}{If \code{TRUE}, \code{sigma_mu} is  updated, with a half-Cauchy prior on \code{sigma_mu} centered at the initial guess.}
 
-\item{update_s}{If true, s is updated using the Dirichlet prior.}
+\item{update_s}{If \code{TRUE}, \code{s} is updated using the Dirichlet prior \eqn{s \sim D(\alpha / P, \ldots, \alpha / P)} where \eqn{P} is the number of covariates.}
 
-\item{update_alpha}{If true, alpha is updated using a scaled beta prime prior}
+\item{update_alpha}{If \code{TRUE}, \code{alpha} is updated using a scaled beta prime prior.}
 
-\item{update_beta}{If true, beta is updated using a Normal(0,2^2) prior}
+\item{update_beta}{If \code{TRUE}, \code{beta} is updated using a normal prior with mean 0 and variance 4.}
 
-\item{update_gamma}{If true, gamma is updated using a Uniform(0.5, 1) prior}
+\item{update_gamma}{If \code{TRUE}, gamma is updated using a Uniform(0.5, 1) prior.}
 
-\item{update_tau}{If true, tau is updated for each tree}
+\item{update_tau}{If \code{TRUE}, the bandwidth \code{tau} is updated for each tree}
 
-\item{update_tau_mean}{If true, the mean of tau is updated}
+\item{update_tau_mean}{If \code{TRUE}, the mean of \code{tau} is updated}
 
-\item{update_sigma}{If true, sigma is updated, with a half-Cauchy prior on sigma centered at the initial guess}
+\item{update_sigma}{If \code{TRUE}, \code{sigma} is updated, with a half-Cauchy prior on \code{sigma} centered at the initial guess.}
 
-\item{cache_trees}{If true, we save the trees for each MCMC iteration when using the MakeForest interface}
+\item{cache_trees}{If \code{TRUE}, we save the trees for each MCMC iteration when using the MakeForest interface}
 }
 \value{
-Returns a list containing the function arguments
+Returns a list containing the function arguments.
 }
 \description{
-Creates a list which provides the parameters for running the Markov chain.
+Creates a list that provides the parameters for running the Markov chain.
 }

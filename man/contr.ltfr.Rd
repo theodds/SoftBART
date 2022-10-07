@@ -7,14 +7,12 @@
 contr.ltfr(...)
 }
 \arguments{
-\item{...}{Arguments passed to caret::contr.ltfr}
+\item{...}{A list of arguments.}
 }
 \value{
-A matrix produced by caret::contr.ltfr
+A matrix produced containing full sets of dummy variables.
 }
 \description{
-This function should not be used by the user. This package uses the caret
-function predict.dummyVars; for technical reasons, in order for this
-to work properly we need to import the function contr.ltfr from caret and
-export our own function that calls contr.ltfr from caret.
+Used with \code{dummyVars} in the \pkg{caret} package to create a full set
+ of dummy variables (i.e. less than full rank parameterization).
 }

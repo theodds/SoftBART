@@ -1,7 +1,7 @@
 #' Root mean squared error
 #'
-#' Computes the root mean-squared error between y and yhat, given by 
-#' sqrt(mean((y - yhat)^2)).
+#' Computes the root mean-squared error between \code{y} and \code{yhat}, given
+#' by \code{sqrt(mean((y - yhat)^2))}.
 #'
 #' @param y the realized outcomes
 #' @param yhat the predicted outcomes
