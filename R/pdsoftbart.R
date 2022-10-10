@@ -127,7 +127,7 @@ pd2softbart = function (
   xvals <- as.matrix(expand.grid(levs[[1]],levs[[2]]))
   nxvals <- nrow(xvals)
   if (ncol(x.train)==2){
-    cat('special case: only 2 xs\n')
+    warning('special case: only 2 xs\n')
     x.test = xvals
   } else {
     x.test=NULL
