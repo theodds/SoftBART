@@ -1,7 +1,0 @@
-\documentclass{article}
-\usepackage{pdfpages}
-%\VignetteIndexEntry{linero2022softbart}
-
-\begin{document}
-\includepdf[pages=-, fitpaper=true]{2022-SoftBart.pdf}
-\end{document}
