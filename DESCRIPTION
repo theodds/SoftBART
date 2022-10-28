@@ -1,7 +1,7 @@
 Package: SoftBart
 Type: Package
 Title: Implements the SoftBart Algorithm
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: 
   person(c("Antonio", "R."), "Linero", email = "antonio.linero@austin.utexas.edu", role = c("aut", "cre"))
 Date: 2022-09-09
