@@ -28,9 +28,9 @@
 #'   forest.
 #'   \item \code{forest$get_sigma_mu()} returns the standard deviation of the
 #'   leaf node parameters.
-#'   \item \code{forest$get_tree_counts()} returns a matrix with a column for
-#'   each predictor and a row for each tree that counts the number of times each
-#'   predictor is used in each tree at the current state of \code{forest}.
+#'   \item \code{forest$get_tree_counts()} returns a matrix with a row for
+#'   each group of predictors and a column for each tree that counts the number of times each
+#'   group of predictors is used in each tree at the current state of \code{forest}.
 #'   \item \code{forest$predict_iteration(X, i)} returns the predictions from a
 #'   matrix \code{X} of predictors at iteration \code{i}. Requires that \code{opts$cache_trees =
 #'   TRUE} in \code{MakeForest(hypers, opts)}.
