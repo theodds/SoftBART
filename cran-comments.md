@@ -1,7 +1,6 @@
 ## R CMD check results
 
-There were no ERRORs, WARNINGs, or NOTEs when installed on MacOSX or on 
-win_devel. On Ubuntu there were the following notes:
+Some installs have the note:
 
   checking installed package size ... NOTE
     installed size is  5.8Mb

@@ -79,7 +79,7 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
 
   dv <- dummyVars(formula, data)
   terms <- attr(dv$terms, "term.labels")
-  group <- SoftBart:::dummy_assign(dv)
+  group <- dummy_assign(dv)
   suppressWarnings({
     X_train <- predict(dv, data)
     X_test  <- predict(dv, test_data)
