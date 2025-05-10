@@ -88,6 +88,11 @@ gsoftbart_regression <- function(formula, linear_formula, data, test_data,
     warning("Remember: you probably don't want your formula to also include the linear variables!")
   }
 
+  char_cols <- sapply(data, is.character)
+  data[char_cols] <- lapply(data[char_cols], factor)
+  char_cols <- sapply(test_data, is.character)
+  test_data[char_cols] <- lapply(test_data[char_cols], factor)
+
   dv <- dummyVars(formula, data)
   terms <- attr(dv$terms, "term.labels")
   group <- dummy_assign(dv)

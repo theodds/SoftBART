@@ -72,6 +72,11 @@ softbart_regression <- function(formula, data, test_data, num_tree = 20, k = 2,
   
   ## Get design matricies and groups for categorical
 
+  char_cols <- sapply(data, is.character)
+  data[char_cols] <- lapply(data[char_cols], factor)
+  char_cols <- sapply(test_data, is.character)
+  test_data[char_cols] <- lapply(test_data[char_cols], factor)
+
   dv <- dummyVars(formula, data)
   terms <- attr(dv$terms, "term.labels")
   group <- SoftBart:::dummy_assign(dv)
