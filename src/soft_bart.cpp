@@ -1814,7 +1814,24 @@ arma::mat Forest::do_gibbs_weighted(const arma::mat& X, const arma::vec& Y,
   }
 
   return Y_out;
+}
 
+void Forest::clear_trees() {
+  for(int i = 0; i < trees.size(); i++) {
+    delete trees[i];
+  }
+}
+
+void Forest::rollback() {
+  if(opts.cache_trees) {
+    int cache_size = saved_forests.size();
+    if(cache_size >= 2) {
+      clear_trees();
+      trees = copy_forest(saved_forests[cache_size - 2], hypers);
+      saved_forests[cache_size - 1] = trees;
+    }
+  }
+  return;
 }
 
 void Forest::set_s(const arma::vec& s_) {
@@ -1869,6 +1886,6 @@ RCPP_MODULE(mod_forest) {
     .method("do_predict", &Forest::do_predict)
     .method("get_tree_counts", &Forest::get_tree_counts)
     .method("predict_iteration", &Forest::predict_iteration)
+    .method("rollback", &Forest::rollback)
     .field("num_gibbs", &Forest::num_gibbs);
-
 }

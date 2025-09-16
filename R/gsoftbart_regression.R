@@ -215,7 +215,7 @@ gsoftbart_regression <- function(formula, linear_formula, data, test_data,
     for(j in 1:opts$num_thin) {
       ## Update beta ----
       R <- Y_train - r
-      beta <- update_beta(R, Z_train, ZtZi, sigma^2)
+      beta <- update_beta(R, Z_train, ZtZi, sigma)
       eta <- as.numeric(Z_train %*% beta)
       
       ## Update forest and sigma ----

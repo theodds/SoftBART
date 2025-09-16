@@ -183,6 +183,8 @@ class Forest {
   void set_s(const arma::vec& s_);
   arma::vec do_predict(const arma::mat& X);
   double get_sigma_mu();
+  void clear_trees();
+  void rollback();
 
 };
 
