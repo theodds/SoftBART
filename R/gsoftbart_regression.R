@@ -164,7 +164,7 @@ gsoftbart_regression <- function(formula, linear_formula, data, test_data,
   eta_test     <- matrix(NA, nrow = opts$num_save, ncol = length(Y_test))
   mu_train     <- matrix(NA, nrow = opts$num_save, ncol = length(Y_train))
   mu_test      <- matrix(NA, nrow = opts$num_save, ncol = length(Y_test))
-  beta_out     <- matrix(NA, nrow = opts$num_burn, ncol = ncol(Z_train))
+  beta_out     <- matrix(NA, nrow = opts$num_save, ncol = ncol(Z_train))
   sigma_out    <- numeric(opts$num_save)
   sigma_mu_out <- numeric(opts$num_save)
   varcounts    <- matrix(NA, nrow = opts$num_save, ncol = length(terms))
@@ -195,7 +195,7 @@ gsoftbart_regression <- function(formula, linear_formula, data, test_data,
     
     ## Update beta ----
     R <- Y_train - r
-    beta <- update_beta(R, Z_train, ZtZi, sigma^2)
+    beta <- update_beta(R, Z_train, ZtZi, sigma)
     eta <- as.numeric(Z_train %*% beta)
 
     ## Update forest and sigma ----
@@ -227,7 +227,7 @@ gsoftbart_regression <- function(formula, linear_formula, data, test_data,
     r_test[i,] <- as.numeric(forest$do_predict(X_test)) * sd_Y + mu_Y
     eta_train[i,] <- eta * sd_Y
     eta_test[i,] <- as.numeric(Z_test %*% beta) * sd_Y
-    mu_train[i,] <- r + eta
+    mu_train[i,] <- r_train[i,] + eta_train[i,]
     mu_test[i,] <- r_test[i,] + eta_test[i,]
     beta_out[i,] <- beta * sd_Y
     sigma_out[i] <- sigma * sd_Y
