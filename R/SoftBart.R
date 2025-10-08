@@ -136,7 +136,7 @@ unnormalize_bart <- function(z, a, b) {
 #' @param X A matrix of training data covariates.
 #' @param Y A vector of training data responses.
 #' @param X_test A matrix of test data covariates
-#' @param hypers A ;ist of hyperparameter values obtained from \code{Hypers} function
+#' @param hypers A list of hyperparameter values obtained from \code{Hypers} function
 #' @param opts A list of MCMC chain settings obtained from \code{Opts} function
 #' @param verbose If \code{TRUE}, progress of the chain will be printed to the console.
 #'

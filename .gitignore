@@ -10,3 +10,6 @@ src/*.dll
 /doc/
 /Meta/
 /..Rcheck
+/SoftBart.Rcheck/00_pkg_src
+/SoftBart.Rcheck
+SoftBart_1.0.2.tar.gz

@@ -12,7 +12,7 @@
 #'   \item \code{varimp}: a vector containing the average number of times a predictor
 #'                 was used in a splitting rule.
 #'   \item \code{post_probs}: the posterior inclusion probabilities for each predictor.
-#'   \item \code{median_probability_model}: a vector containing the indicies of the
+#'   \item \code{median_probability_model}: a vector containing the indices of the
 #'     variables included in at least 50 percent of the samples.
 #' }
 #' @export

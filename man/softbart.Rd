@@ -13,7 +13,7 @@ softbart(X, Y, X_test, hypers = NULL, opts = Opts(), verbose = TRUE)
 
 \item{X_test}{A matrix of test data covariates}
 
-\item{hypers}{A ;ist of hyperparameter values obtained from \code{Hypers} function}
+\item{hypers}{A list of hyperparameter values obtained from \code{Hypers} function}
 
 \item{opts}{A list of MCMC chain settings obtained from \code{Opts} function}
 

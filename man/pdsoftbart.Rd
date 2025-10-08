@@ -40,7 +40,7 @@ Returns a list with components given below.
             \code{j}th level.
  \item \code{levs}: The list of levels used, each component corresponding to a 
  variable. If the argument \code{levs} was supplied it is unchanged. Otherwise, the 
- levels in levs are constructed using the argument \code{levquants}.
+ levels in \code{levs} are constructed using the argument \code{levquants}.
 }
 }
 \description{
